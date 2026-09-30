@@ -22,7 +22,7 @@ jobs:
           import urllib.request
 
           sources = [
-              ("JAPAN", "https://raw.githubusercontent.com/cherryand1112-creator/IPTV-JP/main/JP_NOVPN.m3u"),
+             ("JAPAN", "https://iptv-org.github.io/iptv/countries/jp.m3u"),
               ("VIETNAM", "https://iptv-org.github.io/iptv/countries/vn.m3u"),
           ]
 
