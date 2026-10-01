@@ -2,7 +2,7 @@
 # IPTV JP + VN + VTV + EN
 # Japan source preserved
 # Vietnam source preserved
-# VTV sources checked dynamically
+# VTV TV360 + VCDN
 # English source preserved
 
 #EXTINF:-1 group-title="🇯🇵 Japan" tvg-id="gd01" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/6/6f/NHK%E7%B7%8F%E5%90%88%E3%83%AD%E3%82%B42020-.png",NHK G HD
@@ -1255,18 +1255,6 @@ https://cdn.qd.je/163189.php?id=ch8
 
 #EXTINF:-1 tvg-id="Ch U" tvg-name="Channel U" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Mediacorp_Channel_U_2023.svg/2560px-Mediacorp_Channel_U_2023.svg.png" group-title="🇻🇳 Vietnam", Channel U Singapore
 https://cdn.qd.je/163189.php?id=chu
-
-#EXTINF:-1 tvg-id="VTV4.vn" tvg-name="VTV4" group-title="🇻🇳 Vietnam | VTV",VTV4
-https://e3.endpoint.cdn.sctvonline.vn/hls/vtv4/index.m3u8
-
-#EXTINF:-1 tvg-id="VTV7.vn" tvg-name="VTV7" group-title="🇻🇳 Vietnam | VTV",VTV7
-https://e2.endpoint.cdn.sctvonline.vn/hls/vtv7/index.m3u8
-
-#EXTINF:-1 tvg-id="VTV8.vn" tvg-name="VTV8" group-title="🇻🇳 Vietnam | VTV",VTV8
-https://e3.endpoint.cdn.sctvonline.vn/hls/vtv8/index.m3u8
-
-#EXTINF:-1 tvg-id="VTV9.vn" tvg-name="VTV9" group-title="🇻🇳 Vietnam | VTV",VTV9
-https://e2.endpoint.cdn.sctvonline.vn/hls/vtv9/index.m3u8
 
 #EXTINF:-1 tvg-id="1KZNTV.za@SD" tvg-logo="https://admango.cdn.mangomolo.com/analytics/uploads/188/6544bebaae.jpg" group-title="🇬🇧 English | Family",1KZN TV (576p)
 https://cdn.freevisiontv.co.za/sttv/smil:1kzn.stream.smil/playlist.m3u8
