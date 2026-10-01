@@ -60,7 +60,11 @@ jobs:
           # SOURCES
           # ========================================================
 
-          # KEEP CURRENT WORKING JAPAN SOURCE
+          # ========================================================
+          # JAPAN
+          # KEEP CURRENT WORKING SOURCE
+          # ========================================================
+
           JAPAN_URL = (
               "https://raw.githubusercontent.com/"
               "ZXArkin/my-personal-iptv/"
@@ -68,9 +72,14 @@ jobs:
           )
 
 
-          # KEEP CURRENT WORKING VIETNAM SOURCE
-          # VTV CHANNELS ARE REMOVED FROM THIS SOURCE
-          # AND REBUILT BELOW FROM DIRECT HLS SOURCES.
+          # ========================================================
+          # VIETNAM
+          # KEEP CURRENT WORKING SOURCE
+          #
+          # VTV channels are removed from this source and replaced
+          # by the VTVGo sources below.
+          # ========================================================
+
           VIETNAM_URL = (
               "https://raw.githubusercontent.com/"
               "ZXArkin/my-personal-iptv/"
@@ -78,7 +87,11 @@ jobs:
           )
 
 
-          # KEEP CURRENT WORKING ENGLISH SOURCE
+          # ========================================================
+          # ENGLISH
+          # KEEP CURRENT WORKING SOURCE
+          # ========================================================
+
           ENGLISH_URL = (
               "https://iptv-org.github.io/iptv/"
               "languages/eng.m3u"
@@ -162,12 +175,14 @@ jobs:
                               candidate
                               and not candidate.startswith("#")
                           ):
+
                               url = candidate
                               break
 
                           j += 1
 
                       if url:
+
                           channels.append(
                               (info, url)
                           )
@@ -231,6 +246,7 @@ jobs:
 
           japan_out = []
 
+
           for info, url in japan_channels:
 
               info = set_group(
@@ -241,6 +257,7 @@ jobs:
               japan_out.append(
                   (info, url)
               )
+
 
           print(
               "Japan channels:",
@@ -266,8 +283,8 @@ jobs:
           )
 
 
-          # Remove VTV from the old Vietnam playlist.
-          # VTV is rebuilt below.
+          # Detect VTV1-VTV10
+
           vtv_pattern = re.compile(
               r"\bVTV\s*(?:1|2|3|4|5|6|7|8|9|10)\b",
               re.IGNORECASE
@@ -284,14 +301,20 @@ jobs:
                   .strip()
               )
 
+
+              # Remove VTV from the old source.
+              # VTV will be inserted from VTVGo below.
+
               if vtv_pattern.search(name):
 
                   continue
+
 
               info = set_group(
                   info,
                   "🇻🇳 Vietnam"
               )
+
 
               vietnam_out.append(
                   (info, url)
@@ -305,61 +328,61 @@ jobs:
 
 
           # ========================================================
-          # VTV
+          # VTVGo
           #
-          # DIRECT HLS SOURCES
+          # DIRECT VTVGo CDN
           #
           # IMPORTANT:
-          # DO NOT use xemtv.us.
+          # These URLs are inserted directly into the playlist.
           #
-          # DO NOT perform GitHub-side HLS validation here.
-          # Some CDN servers can reject GitHub Actions while still
-          # allowing the actual IPTV player to request the stream.
+          # We do NOT test the URLs from GitHub Actions because
+          # CDN/geographical restrictions can cause GitHub to fail
+          # even when the IPTV player can access the stream.
           # ========================================================
 
           print("")
           print("========================================")
-          print("VTV")
+          print("VTVGo")
           print("========================================")
 
 
           VTV_SOURCES = {
 
               "VTV1":
-                  "https://live-a.fptplay53.net/live/media/"
-                  "vtv1/live247-hls-avc/index.m3u8",
+                  "https://vtvgolive-failover.vtvdigital.vn/"
+                  "vtvgo/vtv1-manifest.m3u8",
 
               "VTV2":
-                  "https://live-a.fptplay53.net/live/media/"
-                  "vtv2/live247-hls-avc/index.m3u8",
+                  "https://vtvgolive-failover.vtvdigital.vn/"
+                  "vtvgo/vtv2-manifest.m3u8",
 
               "VTV3":
-                  "https://live-a.fptplay53.net/live/media/"
-                  "vtv3/live247-hls-avc/index.m3u8",
+                  "https://vtvgolive-failover.vtvdigital.vn/"
+                  "vtvgo/vtv3-manifest.m3u8",
 
               "VTV4":
-                  "https://live-a.fptplay53.net/live/media/"
-                  "vtv4/live247-hls-avc/index.m3u8",
+                  "https://vtvgolive-failover.vtvdigital.vn/"
+                  "vtvgo/vtv4-manifest.m3u8",
 
               "VTV5":
-                  "https://live-a.fptplay53.net/live/media/"
-                  "vtv5/live247-hls-avc/index.m3u8",
+                  "https://vtvgolive-failover.vtvdigital.vn/"
+                  "vtvgo/vtv5-manifest.m3u8",
 
               "VTV6":
-                  "https://live-a.fptplay53.net/live/media/"
-                  "vtv6/live247-hls-avc/index.m3u8",
+                  "https://vtvgolive-failover.vtvdigital.vn/"
+                  "vtvgo/vtv6-manifest.m3u8",
 
               "VTV7":
-                  "https://live-a.fptplay53.net/live/media/"
-                  "vtv7/live247-hls-avc/index.m3u8",
+                  "https://vtvgolive-failover.vtvdigital.vn/"
+                  "vtvgo/vtv7-manifest.m3u8",
 
               "VTV8":
-                  "https://live-a.fptplay53.net/live/media/"
-                  "vtv8/live247-hls-avc/index.m3u8",
+                  "https://vtvgolive-failover.vtvdigital.vn/"
+                  "vtvgo/vtv8-manifest.m3u8",
 
               "VTV9":
-                  "https://live-a.fptplay53.net/live/media/"
-                  "vtv9/live247-hls-avc/index.m3u8",
+                  "https://vtvgolive-failover.vtvdigital.vn/"
+                  "vtvgo/vtv9-manifest.m3u8",
           }
 
 
@@ -374,12 +397,14 @@ jobs:
                   url
               )
 
+
               info = (
                   '#EXTINF:-1 '
                   'tvg-id="' + channel + '" '
                   'group-title="🇻🇳 Vietnam | VTV",'
                   + channel
               )
+
 
               vtv_out.append(
                   (
@@ -391,7 +416,7 @@ jobs:
 
           print("")
           print(
-              "VTV channels:",
+              "VTVGo channels:",
               len(vtv_out)
           )
 
@@ -405,9 +430,11 @@ jobs:
           print("ENGLISH")
           print("========================================")
 
+
           english_text = download(
               ENGLISH_URL
           )
+
 
           english_channels = parse_m3u(
               english_text
@@ -415,7 +442,7 @@ jobs:
 
 
           # ========================================================
-          # ENGLISH BLOCK LIST
+          # BLOCKED CONTENT
           # ========================================================
 
           blocked = [
@@ -436,7 +463,7 @@ jobs:
 
 
           # ========================================================
-          # ENGLISH GROUPING
+          # ENGLISH GROUP
           # ========================================================
 
           def english_group(
@@ -451,7 +478,9 @@ jobs:
               ).lower()
 
 
+              # ----------------------------------------------------
               # KIDS
+              # ----------------------------------------------------
 
               if any(
                   x in text
@@ -474,7 +503,9 @@ jobs:
                   )
 
 
+              # ----------------------------------------------------
               # ANIMATION
+              # ----------------------------------------------------
 
               if any(
                   x in text
@@ -492,7 +523,9 @@ jobs:
                   )
 
 
+              # ----------------------------------------------------
               # FAMILY
+              # ----------------------------------------------------
 
               if any(
                   x in text
@@ -508,7 +541,9 @@ jobs:
                   )
 
 
+              # ----------------------------------------------------
               # EDUCATION
+              # ----------------------------------------------------
 
               if any(
                   x in text
@@ -527,7 +562,9 @@ jobs:
                   )
 
 
+              # ----------------------------------------------------
               # SCIENCE
+              # ----------------------------------------------------
 
               if any(
                   x in text
@@ -545,7 +582,9 @@ jobs:
                   )
 
 
+              # ----------------------------------------------------
               # DOCUMENTARY
+              # ----------------------------------------------------
 
               if any(
                   x in text
@@ -565,7 +604,9 @@ jobs:
                   )
 
 
+              # ----------------------------------------------------
               # MOVIES
+              # ----------------------------------------------------
 
               if any(
                   x in text
@@ -585,7 +626,9 @@ jobs:
                   )
 
 
+              # ----------------------------------------------------
               # SERIES
+              # ----------------------------------------------------
 
               if any(
                   x in text
@@ -603,7 +646,9 @@ jobs:
                   )
 
 
+              # ----------------------------------------------------
               # MUSIC
+              # ----------------------------------------------------
 
               if any(
                   x in text
@@ -622,7 +667,9 @@ jobs:
                   )
 
 
+              # ----------------------------------------------------
               # ENTERTAINMENT
+              # ----------------------------------------------------
 
               if any(
                   x in text
@@ -642,7 +689,9 @@ jobs:
                   )
 
 
+              # ----------------------------------------------------
               # SPORTS
+              # ----------------------------------------------------
 
               if any(
                   x in text
@@ -668,7 +717,9 @@ jobs:
                   )
 
 
+              # ----------------------------------------------------
               # NEWS
+              # ----------------------------------------------------
 
               if any(
                   x in text
@@ -688,7 +739,9 @@ jobs:
                   )
 
 
+              # ----------------------------------------------------
               # DEFAULT
+              # ----------------------------------------------------
 
               return (
                   "🇬🇧 English | Entertainment"
@@ -709,14 +762,13 @@ jobs:
                   .strip()
               )
 
+
               text = (
                   name
                   + " "
                   + info
               ).lower()
 
-
-              # REMOVE UNWANTED CONTENT
 
               if any(
                   x in text
@@ -755,7 +807,7 @@ jobs:
           # ========================================================
           # SAFETY CHECKS
           #
-          # Protect working Japan / Vietnam / English sources.
+          # Protect the three working sources.
           # ========================================================
 
           print("")
@@ -788,12 +840,6 @@ jobs:
               )
 
 
-          # VTV is NOT used as a failure condition.
-          #
-          # The VTV URLs are intentionally written directly
-          # to the playlist.
-
-
           # ========================================================
           # BUILD FINAL PLAYLIST
           # ========================================================
@@ -808,12 +854,11 @@ jobs:
 
               "# Vietnam non-VTV source preserved",
 
-              "# VTV direct HLS sources",
+              "# VTVGo direct CDN",
 
               "# English source preserved",
 
               "",
-
           ]
 
 
@@ -883,7 +928,7 @@ jobs:
 
 
           # ========================================================
-          # FINAL RESULT
+          # RESULT
           # ========================================================
 
           total = (
@@ -943,7 +988,7 @@ jobs:
 
 
       # ============================================================
-      # RUN GENERATOR
+      # GENERATE PLAYLIST
       # ============================================================
 
       - name: Generate IPTV playlist
