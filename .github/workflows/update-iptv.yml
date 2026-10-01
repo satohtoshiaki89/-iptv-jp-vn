@@ -346,44 +346,32 @@ jobs:
           print("========================================")
 
 
-          VTV_SOURCES = {
+#EXTINF:-1 tvg-id="VTV1" group-title="🇻🇳 Vietnam | VTV",VTV1
+https://live-a.fptplay53.net/live/media/vtv1/live247-hls-avc/index.m3u8
 
-              "VTV1":
-                  "https://vtvgolive-failover.vtvdigital.vn/"
-                  "vtvgo/vtv1-manifest.m3u8",
+#EXTINF:-1 tvg-id="VTV2" group-title="🇻🇳 Vietnam | VTV",VTV2
+https://live-a.fptplay53.net/live/media/vtv2/live247-hls-avc/index.m3u8
 
-              "VTV2":
-                  "https://vtvgolive-failover.vtvdigital.vn/"
-                  "vtvgo/vtv2-manifest.m3u8",
+#EXTINF:-1 tvg-id="VTV3" group-title="🇻🇳 Vietnam | VTV",VTV3
+https://live-a.fptplay53.net/live/media/vtv3/live247-hls-avc/index.m3u8
 
-              "VTV3":
-                  "https://vtvgolive-failover.vtvdigital.vn/"
-                  "vtvgo/vtv3-manifest.m3u8",
+#EXTINF:-1 tvg-id="VTV4" group-title="🇻🇳 Vietnam | VTV",VTV4
+https://live-a.fptplay53.net/live/media/vtv4/live247-hls-avc/index.m3u8
 
-              "VTV4":
-                  "https://vtvgolive-failover.vtvdigital.vn/"
-                  "vtvgo/vtv4-manifest.m3u8",
+#EXTINF:-1 tvg-id="VTV5" group-title="🇻🇳 Vietnam | VTV",VTV5
+https://live-a.fptplay53.net/live/media/vtv5/live247-hls-avc/index.m3u8
 
-              "VTV5":
-                  "https://vtvgolive-failover.vtvdigital.vn/"
-                  "vtvgo/vtv5-manifest.m3u8",
+#EXTINF:-1 tvg-id="VTV6" group-title="🇻🇳 Vietnam | VTV",VTV6
+https://live-a.fptplay53.net/live/media/vtv6/live247-hls-avc/index.m3u8
 
-              "VTV6":
-                  "https://vtvgolive-failover.vtvdigital.vn/"
-                  "vtvgo/vtv6-manifest.m3u8",
+#EXTINF:-1 tvg-id="VTV7" group-title="🇻🇳 Vietnam | VTV",VTV7
+https://live-a.fptplay53.net/live/media/vtv7/live247-hls-avc/index.m3u8
 
-              "VTV7":
-                  "https://vtvgolive-failover.vtvdigital.vn/"
-                  "vtvgo/vtv7-manifest.m3u8",
+#EXTINF:-1 tvg-id="VTV8" group-title="🇻🇳 Vietnam | VTV",VTV8
+https://live-a.fptplay53.net/live/media/vtv8/live-hls-avc/index.m3u8
 
-              "VTV8":
-                  "https://vtvgolive-failover.vtvdigital.vn/"
-                  "vtvgo/vtv8-manifest.m3u8",
-
-              "VTV9":
-                  "https://vtvgolive-failover.vtvdigital.vn/"
-                  "vtvgo/vtv9-manifest.m3u8",
-          }
+#EXTINF:-1 tvg-id="VTV9" group-title="🇻🇳 Vietnam | VTV",VTV9
+https://live-a.fptplay53.net/live/media/vtv9/live247-hls-avc/index.m3u8
 
 
           vtv_out = []
