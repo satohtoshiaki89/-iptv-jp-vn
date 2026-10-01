@@ -1,5 +1,9 @@
 #EXTM3U
-# JP + VN + VTV + EN
+# IPTV JP + VN + VTV + EN
+# Japan source preserved
+# Vietnam source preserved
+# VTV dynamically refreshed
+# English source preserved
 
 #EXTINF:-1 group-title="🇯🇵 Japan" tvg-id="gd01" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/6/6f/NHK%E7%B7%8F%E5%90%88%E3%83%AD%E3%82%B42020-.png",NHK G HD
 https://naori-test.netgenx.site/pxx.php?shk_cid=hdgd01
@@ -1251,36 +1255,6 @@ https://cdn.qd.je/163189.php?id=ch8
 
 #EXTINF:-1 tvg-id="Ch U" tvg-name="Channel U" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Mediacorp_Channel_U_2023.svg/2560px-Mediacorp_Channel_U_2023.svg.png" group-title="🇻🇳 Vietnam", Channel U Singapore
 https://cdn.qd.je/163189.php?id=chu
-
-#EXTINF:-1 tvg-id="VTV1" group-title="🇻🇳 Vietnam | VTV",VTV1
-https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv1-manifest.m3u8
-
-#EXTINF:-1 tvg-id="VTV2" group-title="🇻🇳 Vietnam | VTV",VTV2
-https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv2-manifest.m3u8
-
-#EXTINF:-1 tvg-id="VTV3" group-title="🇻🇳 Vietnam | VTV",VTV3
-https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv3-manifest.m3u8
-
-#EXTINF:-1 tvg-id="VTV4" group-title="🇻🇳 Vietnam | VTV",VTV4
-https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv4-manifest.m3u8
-
-#EXTINF:-1 tvg-id="VTV5" group-title="🇻🇳 Vietnam | VTV",VTV5
-https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv5-manifest.m3u8
-
-#EXTINF:-1 tvg-id="VTV6" group-title="🇻🇳 Vietnam | VTV",VTV6
-https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv6-manifest.m3u8
-
-#EXTINF:-1 tvg-id="VTV7" group-title="🇻🇳 Vietnam | VTV",VTV7
-https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv7-manifest.m3u8
-
-#EXTINF:-1 tvg-id="VTV8" group-title="🇻🇳 Vietnam | VTV",VTV8
-https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv8-manifest.m3u8
-
-#EXTINF:-1 tvg-id="VTV9" group-title="🇻🇳 Vietnam | VTV",VTV9
-https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv9-manifest.m3u8
-
-#EXTINF:-1 tvg-id="VTV10" group-title="🇻🇳 Vietnam | VTV",VTV10
-https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtvct-manifest.m3u8
 
 #EXTINF:-1 tvg-id="1KZNTV.za@SD" tvg-logo="https://admango.cdn.mangomolo.com/analytics/uploads/188/6544bebaae.jpg" group-title="🇬🇧 English | Family",1KZN TV (576p)
 https://cdn.freevisiontv.co.za/sttv/smil:1kzn.stream.smil/playlist.m3u8
