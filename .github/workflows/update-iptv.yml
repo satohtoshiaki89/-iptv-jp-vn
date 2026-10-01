@@ -328,50 +328,55 @@ jobs:
 
 
           # ========================================================
-          # VTVGo
+          # VTV
           #
-          # DIRECT VTVGo CDN
-          #
-          # IMPORTANT:
-          # These URLs are inserted directly into the playlist.
-          #
-          # We do NOT test the URLs from GitHub Actions because
-          # CDN/geographical restrictions can cause GitHub to fail
-          # even when the IPTV player can access the stream.
+          # FPTPlay CDN sources (current 2025-2026 URLs)
           # ========================================================
 
           print("")
           print("========================================")
-          print("VTVGo")
+          print("VTV")
           print("========================================")
 
 
-#EXTINF:-1 tvg-id="VTV1" group-title="🇻🇳 Vietnam | VTV",VTV1
-https://live-a.fptplay53.net/live/media/vtv1/live247-hls-avc/index.m3u8
+          VTV_SOURCES = {
 
-#EXTINF:-1 tvg-id="VTV2" group-title="🇻🇳 Vietnam | VTV",VTV2
-https://live-a.fptplay53.net/live/media/vtv2/live247-hls-avc/index.m3u8
+              "VTV1":
+                  "https://live-a.fptplay53.net/live/media/"
+                  "vtv1/live247-hls-avc/index.m3u8",
 
-#EXTINF:-1 tvg-id="VTV3" group-title="🇻🇳 Vietnam | VTV",VTV3
-https://live-a.fptplay53.net/live/media/vtv3/live247-hls-avc/index.m3u8
+              "VTV2":
+                  "https://live-a.fptplay53.net/live/media/"
+                  "vtv2/live247-hls-avc/index.m3u8",
 
-#EXTINF:-1 tvg-id="VTV4" group-title="🇻🇳 Vietnam | VTV",VTV4
-https://live-a.fptplay53.net/live/media/vtv4/live247-hls-avc/index.m3u8
+              "VTV3":
+                  "https://live-a.fptplay53.net/live/media/"
+                  "vtv3/live247-hls-avc/index.m3u8",
 
-#EXTINF:-1 tvg-id="VTV5" group-title="🇻🇳 Vietnam | VTV",VTV5
-https://live-a.fptplay53.net/live/media/vtv5/live247-hls-avc/index.m3u8
+              "VTV4":
+                  "https://live-a.fptplay53.net/live/media/"
+                  "vtv4/live247-hls-avc/index.m3u8",
 
-#EXTINF:-1 tvg-id="VTV6" group-title="🇻🇳 Vietnam | VTV",VTV6
-https://live-a.fptplay53.net/live/media/vtv6/live247-hls-avc/index.m3u8
+              "VTV5":
+                  "https://live-a.fptplay53.net/live/media/"
+                  "vtv5/live247-hls-avc/index.m3u8",
 
-#EXTINF:-1 tvg-id="VTV7" group-title="🇻🇳 Vietnam | VTV",VTV7
-https://live-a.fptplay53.net/live/media/vtv7/live247-hls-avc/index.m3u8
+              "VTV6":
+                  "https://live-a.fptplay53.net/live/media/"
+                  "vtv6/live247-hls-avc/index.m3u8",
 
-#EXTINF:-1 tvg-id="VTV8" group-title="🇻🇳 Vietnam | VTV",VTV8
-https://live-a.fptplay53.net/live/media/vtv8/live-hls-avc/index.m3u8
+              "VTV7":
+                  "https://live-a.fptplay53.net/live/media/"
+                  "vtv7/live247-hls-avc/index.m3u8",
 
-#EXTINF:-1 tvg-id="VTV9" group-title="🇻🇳 Vietnam | VTV",VTV9
-https://live-a.fptplay53.net/live/media/vtv9/live247-hls-avc/index.m3u8
+              "VTV8":
+                  "https://live-a.fptplay53.net/live/media/"
+                  "vtv8/live-hls-avc/index.m3u8",
+
+              "VTV9":
+                  "https://live-a.fptplay53.net/live/media/"
+                  "vtv9/live247-hls-avc/index.m3u8",
+          }
 
 
           vtv_out = []
@@ -404,7 +409,7 @@ https://live-a.fptplay53.net/live/media/vtv9/live247-hls-avc/index.m3u8
 
           print("")
           print(
-              "VTVGo channels:",
+              "VTV channels:",
               len(vtv_out)
           )
 
