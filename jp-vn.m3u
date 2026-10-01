@@ -2,7 +2,7 @@
 # IPTV JP + VN + VTV + EN
 # Japan source preserved
 # Vietnam non-VTV source preserved
-# VTVGo direct CDN
+# VTV automatic fallback sources
 # English source preserved
 
 #EXTINF:-1 group-title="🇯🇵 Japan" tvg-id="gd01" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/6/6f/NHK%E7%B7%8F%E5%90%88%E3%83%AD%E3%82%B42020-.png",NHK G HD
@@ -1255,33 +1255,6 @@ https://cdn.qd.je/163189.php?id=ch8
 
 #EXTINF:-1 tvg-id="Ch U" tvg-name="Channel U" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Mediacorp_Channel_U_2023.svg/2560px-Mediacorp_Channel_U_2023.svg.png" group-title="🇻🇳 Vietnam", Channel U Singapore
 https://cdn.qd.je/163189.php?id=chu
-
-#EXTINF:-1 tvg-id="VTV1" group-title="🇻🇳 Vietnam | VTV",VTV1
-https://live-a.fptplay53.net/live/media/vtv1/live247-hls-avc/index.m3u8
-
-#EXTINF:-1 tvg-id="VTV2" group-title="🇻🇳 Vietnam | VTV",VTV2
-https://live-a.fptplay53.net/live/media/vtv2/live247-hls-avc/index.m3u8
-
-#EXTINF:-1 tvg-id="VTV3" group-title="🇻🇳 Vietnam | VTV",VTV3
-https://live-a.fptplay53.net/live/media/vtv3/live247-hls-avc/index.m3u8
-
-#EXTINF:-1 tvg-id="VTV4" group-title="🇻🇳 Vietnam | VTV",VTV4
-https://live-a.fptplay53.net/live/media/vtv4/live247-hls-avc/index.m3u8
-
-#EXTINF:-1 tvg-id="VTV5" group-title="🇻🇳 Vietnam | VTV",VTV5
-https://live-a.fptplay53.net/live/media/vtv5/live247-hls-avc/index.m3u8
-
-#EXTINF:-1 tvg-id="VTV6" group-title="🇻🇳 Vietnam | VTV",VTV6
-https://live-a.fptplay53.net/live/media/vtv6/live247-hls-avc/index.m3u8
-
-#EXTINF:-1 tvg-id="VTV7" group-title="🇻🇳 Vietnam | VTV",VTV7
-https://live-a.fptplay53.net/live/media/vtv7/live247-hls-avc/index.m3u8
-
-#EXTINF:-1 tvg-id="VTV8" group-title="🇻🇳 Vietnam | VTV",VTV8
-https://live-a.fptplay53.net/live/media/vtv8/live-hls-avc/index.m3u8
-
-#EXTINF:-1 tvg-id="VTV9" group-title="🇻🇳 Vietnam | VTV",VTV9
-https://live-a.fptplay53.net/live/media/vtv9/live247-hls-avc/index.m3u8
 
 #EXTINF:-1 tvg-id="1KZNTV.za@SD" tvg-logo="https://admango.cdn.mangomolo.com/analytics/uploads/188/6544bebaae.jpg" group-title="🇬🇧 English | Family",1KZN TV (576p)
 https://cdn.freevisiontv.co.za/sttv/smil:1kzn.stream.smil/playlist.m3u8
