@@ -18,61 +18,61 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Build JP-VN-English IPTV playlist
+      - name: Build IPTV playlist
         run: |
           python - <<'PY'
           import json
           import urllib.request
-          import re
 
-          API_BASE = "https://iptv-org.github.io/api"
+          API = "https://iptv-org.github.io/api"
 
-          CHANNELS_URL = f"{API_BASE}/channels.json"
-          FEEDS_URL = f"{API_BASE}/feeds.json"
-          STREAMS_URL = f"{API_BASE}/streams.json"
+          URL_CHANNELS = f"{API}/channels.json"
+          URL_FEEDS = f"{API}/feeds.json"
+          URL_STREAMS = f"{API}/streams.json"
 
-          def download_json(url):
-              print(f"Downloading: {url}")
+          def get_json(url):
+              print("Downloading:", url)
 
-              request = urllib.request.Request(
+              req = urllib.request.Request(
                   url,
-                  headers={"User-Agent": "Mozilla/5.0"}
+                  headers={
+                      "User-Agent": "Mozilla/5.0"
+                  }
               )
 
-              with urllib.request.urlopen(request, timeout=120) as response:
+              with urllib.request.urlopen(req, timeout=180) as response:
                   return json.loads(
-                      response.read().decode("utf-8", errors="ignore")
+                      response.read().decode(
+                          "utf-8",
+                          errors="ignore"
+                      )
                   )
 
-          print("================================")
-          print("Downloading iptv-org API data")
-          print("================================")
+          print("========================================")
+          print("Downloading iptv-org API")
+          print("========================================")
 
-          channels = download_json(CHANNELS_URL)
-          feeds = download_json(FEEDS_URL)
-          streams = download_json(STREAMS_URL)
+          channels = get_json(URL_CHANNELS)
+          feeds = get_json(URL_FEEDS)
+          streams = get_json(URL_STREAMS)
 
-          print(f"Channels: {len(channels)}")
-          print(f"Feeds: {len(feeds)}")
-          print(f"Streams: {len(streams)}")
+          print("Channels:", len(channels))
+          print("Feeds:", len(feeds))
+          print("Streams:", len(streams))
 
-          # ---------------------------------------------------------
-          # SETTINGS
-          # ---------------------------------------------------------
+          # ========================================================
+          # LANGUAGES
+          # ========================================================
 
-          JAPANESE_LANGS = {
-              "jpn"
-          }
+          JAPANESE = "jpn"
+          VIETNAMESE = "vie"
+          ENGLISH = "eng"
 
-          VIETNAMESE_LANGS = {
-              "vie"
-          }
+          # ========================================================
+          # ENGLISH CATEGORIES WANTED
+          # ========================================================
 
-          ENGLISH_LANGS = {
-              "eng"
-          }
-
-          ENGLISH_ALLOWED_CATEGORIES = {
+          ENGLISH_ALLOWED = {
               "animation",
               "children",
               "education",
@@ -80,29 +80,76 @@ jobs:
               "family",
               "movies",
               "music",
-              "series",
               "science",
+              "series",
               "sports",
               "documentary"
           }
 
-          ENGLISH_BLOCKED_CATEGORIES = {
+          # Categories we definitely do NOT want
+          BLOCKED_CATEGORIES = {
               "adult",
-              "business",
-              "legislative",
               "religious",
+              "shop",
               "shopping",
-              "weather"
+              "weather",
+              "business",
+              "legislative"
           }
 
-          BLOCKED_NAME_WORDS = {
-              "pluto tv",
-              "pluto"
+          # ========================================================
+          # BLOCKED CHANNEL NAMES
+          # ========================================================
+
+          BLOCKED_NAMES = {
+              "pluto",
+              "pluto tv"
           }
 
-          # ---------------------------------------------------------
-          # CHANNEL INFORMATION
-          # ---------------------------------------------------------
+          def channel_name(channel):
+              return (
+                  channel.get("name")
+                  or channel.get("native_name")
+                  or channel.get("id")
+                  or "Unknown"
+              )
+
+          def categories(channel):
+              result = set()
+
+              value = channel.get("categories", [])
+
+              if isinstance(value, list):
+                  for item in value:
+                      if isinstance(item, str):
+                          result.add(item.lower())
+
+              return result
+
+          def languages(feed):
+              result = set()
+
+              value = feed.get("languages", [])
+
+              if isinstance(value, list):
+                  for item in value:
+                      if isinstance(item, str):
+                          result.add(item.lower())
+
+              return result
+
+          def is_blocked_name(name):
+              name = name.lower()
+
+              for word in BLOCKED_NAMES:
+                  if word in name:
+                      return True
+
+              return False
+
+          # ========================================================
+          # CHANNEL MAP
+          # ========================================================
 
           channel_map = {}
 
@@ -112,21 +159,36 @@ jobs:
               if channel_id:
                   channel_map[channel_id] = channel
 
-          # ---------------------------------------------------------
-          # FEED INFORMATION
-          # ---------------------------------------------------------
+          # ========================================================
+          # FEEDS
+          #
+          # feed_id -> feed information
+          # ========================================================
 
           feed_map = {}
 
+          # channel -> feeds
+          feeds_by_channel = {}
+
           for feed in feeds:
+              channel_id = feed.get("channel")
               feed_id = feed.get("id")
 
-              if feed_id:
-                  feed_map[feed_id] = feed
+              if not channel_id or not feed_id:
+                  continue
 
-          # ---------------------------------------------------------
-          # STREAM INFORMATION
-          # ---------------------------------------------------------
+              feed_map[feed_id] = feed
+
+              feeds_by_channel.setdefault(
+                  channel_id,
+                  []
+              ).append(feed)
+
+          # ========================================================
+          # STREAMS
+          #
+          # channel -> list of streams
+          # ========================================================
 
           streams_by_channel = {}
 
@@ -136,179 +198,194 @@ jobs:
               if not channel_id:
                   continue
 
-              streams_by_channel.setdefault(channel_id, []).append(stream)
+              streams_by_channel.setdefault(
+                  channel_id,
+                  []
+              ).append(stream)
 
-          # ---------------------------------------------------------
-          # HELPER FUNCTIONS
-          # ---------------------------------------------------------
+          # ========================================================
+          # STREAM SCORE
+          # ========================================================
 
-          def get_languages(channel):
-              values = channel.get("languages", [])
+          def score_stream(stream):
 
-              result = set()
-
-              if isinstance(values, list):
-                  for value in values:
-                      if isinstance(value, str):
-                          result.add(value.lower())
-
-              return result
-
-          def get_categories(channel):
-              values = channel.get("categories", [])
-
-              result = set()
-
-              if isinstance(values, list):
-                  for value in values:
-                      if isinstance(value, str):
-                          result.add(value.lower())
-
-              return result
-
-          def get_channel_name(channel):
-              return (
-                  channel.get("name")
-                  or channel.get("alt_name")
-                  or channel.get("id")
-                  or "Unknown"
-              )
-
-          def is_blocked_name(name):
-              name_lower = name.lower()
-
-              for word in BLOCKED_NAME_WORDS:
-                  if word in name_lower:
-                      return True
-
-              return False
-
-          def stream_score(stream):
               score = 0
 
-              url = str(stream.get("url", "")).lower()
+              url = str(
+                  stream.get("url", "")
+              ).lower()
 
-              # Prefer HLS
-              if ".m3u8" in url:
-                  score += 50
+              label = str(
+                  stream.get("label", "")
+              ).lower()
 
-              # Prefer HTTPS
+              quality = str(
+                  stream.get("quality", "")
+              ).lower()
+
+              # HTTPS preferred
               if url.startswith("https://"):
-                  score += 20
+                  score += 30
 
-              # Prefer streams with quality information
-              quality = str(stream.get("quality", "")).lower()
+              # HLS preferred
+              if ".m3u8" in url:
+                  score += 40
 
+              # Quality
               if "1080" in quality:
                   score += 30
+
               elif "720" in quality:
                   score += 20
+
               elif "576" in quality:
                   score += 10
 
-              # Prefer streams marked as working
-              if stream.get("status") == "online":
+              # Online streams
+              if str(
+                  stream.get("status", "")
+              ).lower() == "online":
                   score += 50
+
+              # Avoid obvious geo-blocked streams
+              if "geo" in label:
+                  score -= 100
+
+              if "blocked" in label:
+                  score -= 100
 
               return score
 
-          # ---------------------------------------------------------
-          # SELECT CHANNELS
-          # ---------------------------------------------------------
+          # ========================================================
+          # BUILD CANDIDATE FEEDS
+          # ========================================================
 
-          selected = {}
+          candidates = []
 
           for channel_id, channel in channel_map.items():
 
-              name = get_channel_name(channel)
+              name = channel_name(channel)
 
               if is_blocked_name(name):
                   continue
 
-              languages = get_languages(channel)
-              categories = get_categories(channel)
+              channel_categories = categories(channel)
 
-              # ---------------------------------------------
-              # JAPANESE
-              # ---------------------------------------------
-
-              if languages & JAPANESE_LANGS:
-                  selected[channel_id] = {
-                      "channel": channel,
-                      "type": "JAPANESE"
-                  }
+              # Never allow blocked categories
+              if channel_categories & BLOCKED_CATEGORIES:
                   continue
 
-              # ---------------------------------------------
-              # VIETNAMESE
-              # ---------------------------------------------
+              channel_feeds = feeds_by_channel.get(
+                  channel_id,
+                  []
+              )
 
-              if languages & VIETNAMESE_LANGS:
-                  selected[channel_id] = {
-                      "channel": channel,
-                      "type": "VIETNAMESE"
-                  }
-                  continue
+              for feed in channel_feeds:
 
-              # ---------------------------------------------
-              # ENGLISH
-              # ---------------------------------------------
+                  feed_id = feed.get("id")
 
-              if languages & ENGLISH_LANGS:
+                  feed_languages = languages(feed)
 
-                  if categories & ENGLISH_BLOCKED_CATEGORIES:
+                  # ------------------------------------------------
+                  # JAPANESE
+                  # ------------------------------------------------
+
+                  if JAPANESE in feed_languages:
+
+                      candidates.append({
+                          "channel_id": channel_id,
+                          "feed_id": feed_id,
+                          "type": "JAPAN",
+                          "channel": channel,
+                          "feed": feed
+                      })
+
                       continue
 
-                  if categories & ENGLISH_ALLOWED_CATEGORIES:
-                      selected[channel_id] = {
+                  # ------------------------------------------------
+                  # VIETNAMESE
+                  # ------------------------------------------------
+
+                  if VIETNAMESE in feed_languages:
+
+                      candidates.append({
+                          "channel_id": channel_id,
+                          "feed_id": feed_id,
+                          "type": "VIETNAM",
                           "channel": channel,
-                          "type": "ENGLISH"
-                      }
+                          "feed": feed
+                      })
 
-          print("================================")
-          print(f"Selected channels: {len(selected)}")
-          print("================================")
+                      continue
 
-          # ---------------------------------------------------------
-          # CREATE PLAYLIST
-          # ---------------------------------------------------------
+                  # ------------------------------------------------
+                  # ENGLISH
+                  #
+                  # English must also have one of the wanted
+                  # categories.
+                  # ------------------------------------------------
+
+                  if ENGLISH in feed_languages:
+
+                      if channel_categories & ENGLISH_ALLOWED:
+
+                          candidates.append({
+                              "channel_id": channel_id,
+                              "feed_id": feed_id,
+                              "type": "ENGLISH",
+                              "channel": channel,
+                              "feed": feed
+                          })
+
+          print("========================================")
+          print("Candidate feeds:", len(candidates))
+          print("========================================")
+
+          # ========================================================
+          # FIND BEST STREAM FOR EACH FEED
+          # ========================================================
 
           output = [
-              "#EXTM3U",
-              ""
+              "#EXTM3U"
           ]
 
           used_urls = set()
 
-          counts = {
-              "JAPANESE": 0,
-              "VIETNAMESE": 0,
-              "ENGLISH": 0
-          }
+          count_japan = 0
+          count_vietnam = 0
+          count_english = 0
 
-          for channel_id, item in sorted(
-              selected.items(),
+          for candidate in sorted(
+              candidates,
               key=lambda x: (
-                  x[1]["type"],
-                  get_channel_name(x[1]["channel"]).lower()
+                  x["type"],
+                  channel_name(
+                      x["channel"]
+                  ).lower(),
+                  x["feed_id"]
               )
           ):
 
-              channel = item["channel"]
-              channel_type = item["type"]
+              channel = candidate["channel"]
+              feed = candidate["feed"]
 
-              channel_name = get_channel_name(channel)
+              channel_id = candidate["channel_id"]
+              feed_id = candidate["feed_id"]
+
+              channel_type = candidate["type"]
+
+              name = channel_name(channel)
+
+              # ------------------------------------------------
+              # Get streams for this channel
+              # ------------------------------------------------
 
               channel_streams = streams_by_channel.get(
                   channel_id,
                   []
               )
 
-              if not channel_streams:
-                  continue
-
-              # Remove streams without URL
-              valid_streams = []
+              matching_streams = []
 
               for stream in channel_streams:
 
@@ -322,93 +399,164 @@ jobs:
 
                   url = url.strip()
 
-                  if not url.startswith(("http://", "https://")):
+                  if not url.startswith(
+                      ("http://", "https://")
+                  ):
                       continue
 
-                  valid_streams.append(stream)
+                  stream_feed = stream.get("feed")
 
-              if not valid_streams:
+                  # If stream explicitly specifies a feed,
+                  # it must match this feed.
+                  if stream_feed:
+                      if stream_feed != feed_id:
+                          continue
+
+                  matching_streams.append(stream)
+
+              if not matching_streams:
                   continue
 
-              # Choose the highest scoring stream
-              valid_streams.sort(
-                  key=stream_score,
+              # ------------------------------------------------
+              # Best stream first
+              # ------------------------------------------------
+
+              matching_streams.sort(
+                  key=score_stream,
                   reverse=True
               )
 
               chosen = None
 
-              for stream in valid_streams:
-                  url = stream.get("url", "").strip()
+              for stream in matching_streams:
 
-                  if url and url not in used_urls:
-                      chosen = stream
-                      break
+                  url = stream.get(
+                      "url",
+                      ""
+                  ).strip()
+
+                  if url in used_urls:
+                      continue
+
+                  chosen = stream
+                  break
 
               if not chosen:
                   continue
 
-              stream_url = chosen.get("url", "").strip()
+              stream_url = chosen.get(
+                  "url",
+                  ""
+              ).strip()
+
+              if not stream_url:
+                  continue
 
               used_urls.add(stream_url)
 
-              categories = get_categories(channel)
+              # ------------------------------------------------
+              # GROUP TITLE
+              # ------------------------------------------------
 
-              if channel_type == "JAPANESE":
-                  group = "Japan"
+              if channel_type == "JAPAN":
 
-              elif channel_type == "VIETNAMESE":
-                  group = "Vietnam"
+                  group = "🇯🇵 Japan"
+
+                  count_japan += 1
+
+              elif channel_type == "VIETNAM":
+
+                  group = "🇻🇳 Vietnam"
+
+                  count_vietnam += 1
 
               else:
-                  if "children" in categories or "animation" in categories:
-                      group = "English | Kids"
 
-                  elif "education" in categories or "science" in categories:
-                      group = "English | Education"
+                  channel_categories = categories(
+                      channel
+                  )
 
-                  elif "documentary" in categories:
-                      group = "English | Documentary"
+                  if (
+                      "children" in channel_categories
+                      or "animation" in channel_categories
+                  ):
 
-                  elif "movies" in categories or "series" in categories:
-                      group = "English | Movies & Series"
+                      group = "🇬🇧 English | Kids"
 
-                  elif "music" in categories:
-                      group = "English | Music"
+                  elif (
+                      "education" in channel_categories
+                      or "science" in channel_categories
+                  ):
 
-                  elif "sports" in categories:
-                      group = "English | Sports"
+                      group = "🇬🇧 English | Education"
 
-                  elif "family" in categories:
-                      group = "English | Family"
+                  elif "documentary" in channel_categories:
+
+                      group = "🇬🇧 English | Documentary"
+
+                  elif (
+                      "movies" in channel_categories
+                      or "series" in channel_categories
+                  ):
+
+                      group = "🇬🇧 English | Movies & Series"
+
+                  elif "music" in channel_categories:
+
+                      group = "🇬🇧 English | Music"
+
+                  elif "sports" in channel_categories:
+
+                      group = "🇬🇧 English | Sports"
+
+                  elif "family" in channel_categories:
+
+                      group = "🇬🇧 English | Family"
 
                   else:
-                      group = "English | Entertainment"
 
-              tvg_id = channel.get("id", "")
-              logo = channel.get("logo", "")
+                      group = "🇬🇧 English | Entertainment"
+
+                  count_english += 1
+
+              # ------------------------------------------------
+              # TVG ID / LOGO
+              # ------------------------------------------------
+
+              tvg_id = channel.get(
+                  "id",
+                  ""
+              )
+
+              logo = channel.get(
+                  "logo",
+                  ""
+              )
+
+              # ------------------------------------------------
+              # EXTINF
+              # ------------------------------------------------
 
               extinf = (
-                  f'#EXTINF:-1'
+                  '#EXTINF:-1'
                   f' tvg-id="{tvg_id}"'
-                  f' tvg-name="{channel_name}"'
+                  f' tvg-name="{name}"'
                   f' group-title="{group}"'
               )
 
               if logo:
-                  extinf += f' tvg-logo="{logo}"'
+                  extinf += (
+                      f' tvg-logo="{logo}"'
+                  )
 
-              extinf += f',{channel_name}'
+              extinf += f',{name}'
 
               output.append(extinf)
               output.append(stream_url)
-              output.append("")
 
-              counts[channel_type] += 1
-
-          # ---------------------------------------------------------
-          # WRITE FILE
-          # ---------------------------------------------------------
+          # ========================================================
+          # WRITE PLAYLIST
+          # ========================================================
 
           with open(
               "jp-vn.m3u",
@@ -416,19 +564,61 @@ jobs:
               encoding="utf-8"
           ) as file:
 
-              file.write("\n".join(output))
+              file.write(
+                  "\n".join(output)
+              )
+
               file.write("\n")
 
-          print("================================")
-          print("PLAYLIST CREATED")
-          print("================================")
-          print(f"Japanese : {counts['JAPANESE']}")
-          print(f"Vietnam  : {counts['VIETNAMESE']}")
-          print(f"English  : {counts['ENGLISH']}")
-          print("--------------------------------")
-          print(f"TOTAL    : {len(used_urls)}")
-          print("================================")
+          # ========================================================
+          # FINAL REPORT
+          # ========================================================
+
+          total = (
+              count_japan
+              + count_vietnam
+              + count_english
+          )
+
+          print("")
+          print("========================================")
+          print("PLAYLIST CREATED SUCCESSFULLY")
+          print("========================================")
+          print("Japan    :", count_japan)
+          print("Vietnam  :", count_vietnam)
+          print("English  :", count_english)
+          print("----------------------------------------")
+          print("TOTAL    :", total)
+          print("========================================")
+
+          if total == 0:
+              raise RuntimeError(
+                  "Playlist contains 0 channels. "
+                  "Stopping workflow so an empty playlist "
+                  "will NOT be committed."
+              )
+
           PY
+
+      - name: Check playlist
+        run: |
+          echo "Checking playlist..."
+
+          if [ ! -s jp-vn.m3u ]; then
+            echo "ERROR: jp-vn.m3u is empty."
+            exit 1
+          fi
+
+          CHANNEL_COUNT=$(grep -c "^#EXTINF" jp-vn.m3u || true)
+
+          echo "Playlist channel count: $CHANNEL_COUNT"
+
+          if [ "$CHANNEL_COUNT" -eq 0 ]; then
+            echo "ERROR: No channels found."
+            exit 1
+          fi
+
+          echo "Playlist check OK."
 
       - name: Commit playlist
         run: |
