@@ -1,4 +1,4 @@
-name: Update JP-VN IPTV Playlist
+name: Update JP-VN-English IPTV Playlist
 
 on:
   workflow_dispatch:
@@ -13,249 +13,365 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Build IPTV playlist
+      - name: Download and build playlist
         shell: bash
         run: |
           python3 <<'PY'
-          import json
-          import re
           import urllib.request
-          from collections import defaultdict
+          import re
 
-          CHANNELS_URL = "https://iptv-org.github.io/api/channels.json"
-          FEEDS_URL    = "https://iptv-org.github.io/api/feeds.json"
-          STREAMS_URL  = "https://iptv-org.github.io/api/streams.json"
-
-          # Nhật: dùng internal stream list để lấy được nhiều kênh hơn
-          JAPAN_STREAMS_URL = "https://raw.githubusercontent.com/iptv-org/iptv/master/streams/jp.m3u"
+          SOURCES = {
+              "Japan": "https://raw.githubusercontent.com/cherryand1112-creator/IPTV-JP/main/JP.m3u",
+              "Vietnam": "https://iptv-org.github.io/iptv/countries/vn.m3u",
+              "English": "https://iptv-org.github.io/iptv/languages/eng.m3u"
+          }
 
           OUTPUT = "jp-vn.m3u"
 
-          UA = "Mozilla/5.0 IPTV-Builder/1.0"
-
-          ENGLISH_COUNTRIES = {
-              "US", "GB", "CA", "AU", "NZ", "IE"
-          }
-
-          ENGLISH_CATEGORIES = {
-              "animation",
-              "children",
-              "kids",
-              "education",
-              "entertainment",
-              "family",
-              "movies",
-              "music",
-              "science",
-              "series",
-              "sports",
-              "documentary"
-          }
-
-          LEARNING_CATEGORIES = {
-              "animation",
-              "children",
-              "kids",
-              "education",
-              "family",
-              "science",
-              "documentary"
-          }
-
-          BLOCKED_CATEGORIES = {
-              "adult",
-              "xxx",
-              "religious",
-              "shop",
-              "shopping",
-              "weather",
-              "business",
-              "legislative"
-          }
-
           def download(url):
-              req = urllib.request.Request(url, headers={"User-Agent": UA})
+              req = urllib.request.Request(
+                  url,
+                  headers={
+                      "User-Agent": "Mozilla/5.0"
+                  }
+              )
               with urllib.request.urlopen(req, timeout=60) as r:
                   return r.read().decode("utf-8", errors="replace")
 
-          def get_json(url):
-              return json.loads(download(url))
+          def parse_m3u(text):
+              lines = text.splitlines()
+              entries = []
 
-          print("Downloading IPTV database...")
+              current = None
 
-          channels = get_json(CHANNELS_URL)
-          feeds    = get_json(FEEDS_URL)
-          streams  = get_json(STREAMS_URL)
+              for line in lines:
+                  line = line.strip()
 
-          channel_by_id = {
-              c["id"]: c for c in channels
-              if c.get("id")
+                  if not line:
+                      continue
+
+                  if line.startswith("#EXTINF:"):
+                      current = line
+                      continue
+
+                  if line.startswith("#"):
+                      continue
+
+                  if current and (
+                      line.startswith("http://")
+                      or line.startswith("https://")
+                  ):
+                      entries.append((current, line))
+                      current = None
+
+              return entries
+
+          # ------------------------------------------------------------
+          # FILTER ENGLISH
+          # ------------------------------------------------------------
+
+          ALLOWED_GROUPS = {
+              "Animation",
+              "Children",
+              "Kids",
+              "Education",
+              "Entertainment",
+              "Family",
+              "Movies",
+              "Music",
+              "Science",
+              "Series",
+              "Sports",
+              "Documentary"
           }
 
-          # ------------------------------------------------------------
-          # LANGUAGE MAP
-          # Current iptv-org API stores languages in feeds.json
-          # ------------------------------------------------------------
+          BLOCKED_GROUPS = {
+              "Adult",
+              "Religious",
+              "Shopping",
+              "Weather",
+              "Business",
+              "Legislative"
+          }
 
-          channel_languages = defaultdict(set)
+          def english_allowed(extinf):
+              lower = extinf.lower()
 
-          for f in feeds:
-              cid = f.get("channel")
-              if not cid:
-                  continue
+              # Remove unwanted categories
+              for group in BLOCKED_GROUPS:
+                  if f'group-title="{group.lower()}"' in lower:
+                      return False
 
-              for lang in f.get("languages") or []:
-                  channel_languages[cid].add(lang.lower())
-
-          # ------------------------------------------------------------
-          # LOGO
-          # ------------------------------------------------------------
-
-          logo_map = {}
-
-          try:
-              logos = get_json("https://iptv-org.github.io/api/logos.json")
-
-              for logo in logos:
-                  cid = logo.get("channel")
-                  url = logo.get("url")
-
-                  if cid and url and cid not in logo_map:
-                      if logo.get("in_use", True):
-                          logo_map[cid] = url
-
-          except Exception as e:
-              print("Logo download warning:", e)
-
-          # ------------------------------------------------------------
-          # STREAM QUALITY SCORING
-          # ------------------------------------------------------------
-
-          def quality_number(q):
-              if not q:
-                  return 0
-
-              m = re.search(r"(\d+)", str(q))
-
-              if m:
-                  return int(m.group(1))
-
-              return 0
-
-          def stream_score(s):
-              url = (s.get("url") or "").lower()
-
-              labels = [
-                  str(x).lower()
-                  for x in (s.get("labels") or [])
-              ]
-
-              score = 0
-
-              if url.startswith("https://"):
-                  score += 100
-
-              if ".m3u8" in url:
-                  score += 80
-
-              score += quality_number(s.get("quality")) // 10
-
-              if "geo-blocked" in labels:
-                  score -= 250
-
-              if "not 24/7" in labels:
-                  score -= 80
-
-              if "offline" in labels:
-                  score -= 1000
-
-              return score
-
-          # ------------------------------------------------------------
-          # SELECT BEST STREAM PER CHANNEL
-          # ------------------------------------------------------------
-
-          streams_by_channel = defaultdict(list)
-
-          for s in streams:
-              cid = s.get("channel")
-              url = s.get("url")
-
-              if cid and url:
-                  streams_by_channel[cid].append(s)
-
-          best_stream = {}
-
-          for cid, items in streams_by_channel.items():
-              items = sorted(
-                  items,
-                  key=stream_score,
-                  reverse=True
+              # Find group title
+              m = re.search(
+                  r'group-title="([^"]+)"',
+                  extinf,
+                  re.I
               )
 
-              if items:
-                  best_stream[cid] = items[0]
+              if not m:
+                  # If there is no group-title, keep it only when
+                  # the entry clearly belongs to English TV.
+                  return True
+
+              group = m.group(1).strip().lower()
+
+              allowed = {
+                  x.lower()
+                  for x in ALLOWED_GROUPS
+              }
+
+              return group in allowed
 
           # ------------------------------------------------------------
-          # OUTPUT STORAGE
+          # BUILD
           # ------------------------------------------------------------
 
-          output_entries = []
-          used_keys = set()
+          all_entries = []
 
-          counts = {
-              "Japan": 0,
-              "Vietnam": 0,
-              "English": 0
-          }
+          # Keep duplicate control separately for each source.
+          seen_japan = set()
+          seen_vietnam = set()
+          seen_english = set()
 
-          def clean_name(name):
-              name = re.sub(
-                  r"\s*\((?:2160|1440|1080|720|576|540|480|360)p\)\s*",
-                  " ",
-                  name,
+          # ------------------------------------------------------------
+          # JAPAN
+          # Direct source that worked yesterday
+          # ------------------------------------------------------------
+
+          print("Downloading Japan...")
+
+          jp_entries = parse_m3u(
+              download(SOURCES["Japan"])
+          )
+
+          for extinf, url in jp_entries:
+
+              key = extinf + "\n" + url
+
+              if key in seen_japan:
+                  continue
+
+              seen_japan.add(key)
+
+              # Force group
+              extinf = re.sub(
+                  r'group-title="[^"]*"',
+                  'group-title="Japan"',
+                  extinf,
+                  count=1,
                   flags=re.I
               )
 
-              name = re.sub(
-                  r"\s+",
-                  " ",
-                  name
-              ).strip()
+              if 'group-title=' not in extinf.lower():
+                  extinf = extinf.replace(
+                      "#EXTINF:-1",
+                      '#EXTINF:-1 group-title="Japan"',
+                      1
+                  )
 
-              return name
-
-          def add_entry(
-              name,
-              url,
-              group,
-              country_group,
-              tvg_id="",
-              logo="",
-              referrer=None,
-              user_agent=None
-          ):
-              if not name or not url:
-                  return
-
-              name = clean_name(name)
-
-              key = (
-                  tvg_id.lower().strip()
-                  if tvg_id
-                  else name.lower().strip()
+              all_entries.append(
+                  ("Japan", extinf, url)
               )
 
-              dedupe_key = (country_group, key)
+          # ------------------------------------------------------------
+          # VIETNAM
+          # Direct public country playlist
+          # ------------------------------------------------------------
 
-              if dedupe_key in used_keys:
-                  return
+          print("Downloading Vietnam...")
 
+          vn_entries = parse_m3u(
+              download(SOURCES["Vietnam"])
+          )
+
+          for extinf, url in vn_entries:
+
+              key = extinf + "\n" + url
+
+              if key in seen_vietnam:
+                  continue
+
+              seen_vietnam.add(key)
+
+              extinf = re.sub(
+                  r'group-title="[^"]*"',
+                  'group-title="Vietnam"',
+                  extinf,
+                  count=1,
+                  flags=re.I
+              )
+
+              if 'group-title=' not in extinf.lower():
+                  extinf = extinf.replace(
+                      "#EXTINF:-1",
+                      '#EXTINF:-1 group-title="Vietnam"',
+                      1
+                  )
+
+              all_entries.append(
+                  ("Vietnam", extinf, url)
+              )
+
+          # ------------------------------------------------------------
+          # ENGLISH
+          # Use public language playlist directly.
+          # Do NOT select individual streams through streams.json.
+          # ------------------------------------------------------------
+
+          print("Downloading English...")
+
+          en_entries = parse_m3u(
+              download(SOURCES["English"])
+          )
+
+          for extinf, url in en_entries:
+
+              if not english_allowed(extinf):
+                  continue
+
+              key = extinf + "\n" + url
+
+              if key in seen_english:
+                  continue
+
+              seen_english.add(key)
+
+              # Keep original group-title where available.
+              # If missing, place into English | Entertainment.
+              m = re.search(
+                  r'group-title="([^"]+)"',
+                  extinf,
+                  re.I
+              )
+
+              if m:
+                  original_group = m.group(1).strip()
+
+                  extinf = re.sub(
+                      r'group-title="[^"]*"',
+                      'group-title="English | '
+                      + original_group
+                      + '"',
+                      extinf,
+                      count=1,
+                      flags=re.I
+                  )
+
+              else:
+                  extinf = extinf.replace(
+                      "#EXTINF:-1",
+                      '#EXTINF:-1 group-title="English | Entertainment"',
+                      1
+                  )
+
+              all_entries.append(
+                  ("English", extinf, url)
+              )
+
+          # ------------------------------------------------------------
+          # WRITE
+          # ------------------------------------------------------------
+
+          header = (
+              '#EXTM3U '
+              'x-tvg-url="'
+              'https://iptv-org.github.io/epg/guides/en.xml,'
+              'https://iptv-org.github.io/epg/guides/ja.xml,'
+              'https://iptv-org.github.io/epg/guides/vi.xml"'
+          )
+
+          with open(
+              OUTPUT,
+              "w",
+              encoding="utf-8",
+              newline="\n"
+          ) as f:
+
+              f.write(header + "\n")
+
+              for _, extinf, url in all_entries:
+                  f.write(extinf + "\n")
+                  f.write(url + "\n")
+
+          japan = sum(
+              1 for x in all_entries
+              if x[0] == "Japan"
+          )
+
+          vietnam = sum(
+              1 for x in all_entries
+              if x[0] == "Vietnam"
+          )
+
+          english = sum(
+              1 for x in all_entries
+              if x[0] == "English"
+          )
+
+          total = len(all_entries)
+
+          print("")
+          print("==============================")
+          print("PLAYLIST CREATED")
+          print("==============================")
+          print("Japan   :", japan)
+          print("Vietnam :", vietnam)
+          print("English :", english)
+          print("TOTAL   :", total)
+          print("==============================")
+
+          if total < 50:
+              raise RuntimeError(
+                  "Playlist too small. Existing playlist will not be replaced."
+              )
+
+          PY
+
+      - name: Verify playlist
+        shell: bash
+        run: |
+          echo "Checking playlist..."
+
+          if [ ! -s jp-vn.m3u ]; then
+            echo "ERROR: jp-vn.m3u is empty."
+            exit 1
+          fi
+
+          COUNT=$(grep -c '^#EXTINF' jp-vn.m3u || true)
+
+          echo "Total channels: $COUNT"
+
+          if [ "$COUNT" -lt 50 ]; then
+            echo "ERROR: Too few channels."
+            exit 1
+          fi
+
+          echo "Playlist verification OK."
+
+      - name: Commit and push
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add jp-vn.m3u
+
+          if git diff --cached --quiet; then
+            echo "No changes."
+            exit 0
+          fi
+
+          git commit -m "Update IPTV playlist"
+
+          git pull --rebase origin main
+
+          git push origin main
               used_keys.add(dedupe_key)
 
               attrs = []
