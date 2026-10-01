@@ -14,37 +14,18 @@ jobs:
 
     steps:
 
-      # ============================================================
-      # CHECKOUT
-      # ============================================================
-
       - name: Checkout repository
         uses: actions/checkout@v4
-
-
-      # ============================================================
-      # PYTHON
-      # ============================================================
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.x"
 
-
-      # ============================================================
-      # REQUESTS
-      # ============================================================
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install requests
-
-
-      # ============================================================
-      # CREATE GENERATOR
-      # ============================================================
 
       - name: Create generator
         run: |
@@ -52,7 +33,6 @@ jobs:
 
           import re
           import requests
-
           from pathlib import Path
 
 
@@ -81,7 +61,7 @@ jobs:
 
 
           # ============================================================
-          # HTTP SESSION
+          # SESSION
           # ============================================================
 
           session = requests.Session()
@@ -92,10 +72,8 @@ jobs:
                   "AppleWebKit/537.36 (KHTML, like Gecko) "
                   "Chrome/140.0 Safari/537.36"
               ),
-              "Accept-Language": (
-                  "vi-VN,vi;q=0.9,"
-                  "en-US;q=0.8,en;q=0.7"
-              )
+              "Accept-Language":
+                  "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7"
           })
 
 
@@ -107,15 +85,15 @@ jobs:
 
               print("DOWNLOAD:", url)
 
-              response = session.get(
+              r = session.get(
                   url,
                   timeout=timeout,
                   allow_redirects=True
               )
 
-              response.raise_for_status()
+              r.raise_for_status()
 
-              return response.text
+              return r.text
 
 
           # ============================================================
@@ -137,7 +115,6 @@ jobs:
                   if line.startswith("#EXTINF:"):
 
                       info = line
-
                       url = None
 
                       j = i + 1
@@ -156,7 +133,6 @@ jobs:
                           j += 1
 
                       if url:
-
                           channels.append(
                               (info, url)
                           )
@@ -197,7 +173,6 @@ jobs:
 
           # ============================================================
           # JAPAN
-          # KEEP ORIGINAL WORKING SOURCE
           # ============================================================
 
           print("")
@@ -232,8 +207,6 @@ jobs:
 
           # ============================================================
           # VIETNAM
-          # KEEP ORIGINAL WORKING SOURCE
-          # REMOVE ONLY VTV
           # ============================================================
 
           print("")
@@ -260,9 +233,6 @@ jobs:
 
               name = info.split(",")[-1].strip()
 
-              # Remove old VTV entries.
-              # VTV will be rebuilt below.
-
               if vtv_pattern.search(name):
                   continue
 
@@ -283,15 +253,11 @@ jobs:
 
           # ============================================================
           # VTV
-          # NEW SOURCES
           #
-          # Do NOT use:
-          # - FPTPlay
-          # - VTVGo
-          # - xemtv
+          # TV360 + VCDN FALLBACK
           #
-          # Only streams which return a valid HLS response
-          # are inserted into the playlist.
+          # SCTVOnline is intentionally removed because it caused
+          # timeout on APTV.
           # ============================================================
 
           print("")
@@ -299,58 +265,121 @@ jobs:
           print("VTV")
           print("========================================")
 
+
           VTV_SOURCES = {
 
               "VTV1": [
-                  "https://cdnw-liv02.todayplus.com.vn/"
-                  "hdb/smil:vtv1-sub.smil/"
-                  "chunklist_w28623972_b2289152.m3u8",
+
+                  # TV360
+                  "http://live.tv360.vn/manifest/"
+                  "VTV1_HD/playlist_1080p.m3u8",
+
+                  # VCDN
+                  "http://drfamaga5qliv.vcdn.cloud/"
+                  "vtv01/vtv01@1080p.m3u8",
+
               ],
 
               "VTV2": [
-                  "https://e3.endpoint.cdn.sctvonline.vn/"
-                  "hls/vtv2/index.m3u8",
+
+                  # TV360
+                  "http://live.tv360.vn/manifest/"
+                  "vtv2/playlist_VTV2-1080-3_6M.m3u8",
+
+                  # VCDN
+                  "http://drfamaga5qliv.vcdn.cloud/"
+                  "vtv02/vtv02@1080p.m3u8",
+
               ],
 
               "VTV3": [
-                  "https://e2.endpoint.cdn.sctvonline.vn/"
-                  "hls/vtv3/index.m3u8",
+
+                  # TV360
+                  "http://live.tv360.vn/manifest/"
+                  "VTV3/playlist_1080p-5M.m3u8",
+
+                  # VCDN
+                  "http://drfamaga5qliv.vcdn.cloud/"
+                  "vtv03/vtv03@1080p.m3u8",
+
               ],
 
               "VTV4": [
-                  "https://e3.endpoint.cdn.sctvonline.vn/"
-                  "hls/vtv4/index.m3u8",
+
+                  # TV360 / alternative CDN
+                  "http://drfamaga5qliv.vcdn.cloud/"
+                  "vtv04/vtv04@1080p.m3u8",
+
+                  # TV360 fallback
+                  "http://live.tv360.vn/manifest/"
+                  "VTV4_HD/playlist_1080p.m3u8",
+
               ],
 
               "VTV5": [
-                  "https://e3.endpoint.cdn.sctvonline.vn/"
-                  "hls/vtv5/index.m3u8",
+
+                  # TV360
+                  "http://live.tv360.vn/manifest/"
+                  "VTV5_HD/playlist_1080p.m3u8",
+
+                  # VCDN
+                  "http://drfamaga5qliv.vcdn.cloud/"
+                  "vtv05/vtv05@1080p.m3u8",
+
               ],
 
               "VTV6": [
-                  "https://e2.endpoint.cdn.sctvonline.vn/"
-                  "hls/vtv6/index.m3u8",
+
+                  # TV360
+                  "http://live.tv360.vn/manifest/"
+                  "VTV6_HD/playlist_1080p.m3u8",
+
+                  # VCDN
+                  "http://drfamaga5qliv.vcdn.cloud/"
+                  "vtv06/vtv06@1080p.m3u8",
+
               ],
 
               "VTV7": [
-                  "https://e2.endpoint.cdn.sctvonline.vn/"
-                  "hls/vtv7/index.m3u8",
+
+                  # VCDN
+                  "http://drfamaga5qliv.vcdn.cloud/"
+                  "vtv07/vtv07@1080p.m3u8",
+
+                  # TV360 fallback
+                  "http://live.tv360.vn/manifest/"
+                  "VTV7_HD/playlist_1080p.m3u8",
+
               ],
 
               "VTV8": [
-                  "https://e3.endpoint.cdn.sctvonline.vn/"
-                  "hls/vtv8/index.m3u8",
+
+                  # VCDN
+                  "http://drfamaga5qliv.vcdn.cloud/"
+                  "vtv08/vtv08@1080p.m3u8",
+
+                  # TV360 fallback
+                  "http://live.tv360.vn/manifest/"
+                  "VTV8_HD/playlist_1080p.m3u8",
+
               ],
 
               "VTV9": [
-                  "https://e2.endpoint.cdn.sctvonline.vn/"
-                  "hls/vtv9/index.m3u8",
+
+                  # VCDN
+                  "http://drfamaga5qliv.vcdn.cloud/"
+                  "vtv09/vtv09@1080p.m3u8",
+
+                  # TV360 fallback
+                  "http://live.tv360.vn/manifest/"
+                  "VTV9_HD/playlist_1080p.m3u8",
+
               ],
           }
 
 
           # ============================================================
-          # VTV HEADERS
+          # VTV CHECK
           # ============================================================
 
           VTV_HEADERS = {
@@ -367,24 +396,14 @@ jobs:
                   "text/plain,"
                   "*/*"
               ),
-
-              "Accept-Language":
-                  "vi-VN,vi;q=0.9,en-US;q=0.8",
-
-              "Referer":
-                  "https://sctvonline.vn/",
           }
 
-
-          # ============================================================
-          # CHECK HLS
-          # ============================================================
 
           def check_hls(url):
 
               try:
 
-                  response = session.get(
+                  r = session.get(
                       url,
                       headers=VTV_HEADERS,
                       timeout=12,
@@ -392,15 +411,15 @@ jobs:
                   )
 
                   content_type = (
-                      response.headers
+                      r.headers
                       .get("content-type", "")
                       .lower()
                   )
 
-                  body = response.text[:10000]
+                  body = r.text[:15000]
 
                   valid = (
-                      response.status_code == 200
+                      r.status_code == 200
                       and (
                           "#EXTM3U" in body
                           or "mpegurl" in content_type
@@ -411,16 +430,16 @@ jobs:
 
                   return (
                       valid,
-                      response.status_code,
-                      len(response.content)
+                      r.status_code,
+                      len(r.content)
                   )
 
-              except Exception as error:
+              except Exception as e:
 
                   return (
                       False,
                       "ERROR",
-                      str(error)
+                      str(e)
                   )
 
 
@@ -430,11 +449,12 @@ jobs:
 
           vtv_out = []
 
+
           for channel, urls in VTV_SOURCES.items():
 
               print("")
               print(
-                  "Checking",
+                  "CHECKING:",
                   channel
               )
 
@@ -443,7 +463,7 @@ jobs:
               for stream_url in urls:
 
                   print(
-                      "  URL:",
+                      "TRY:",
                       stream_url
                   )
 
@@ -452,7 +472,7 @@ jobs:
                   )
 
                   print(
-                      "  RESULT:",
+                      "RESULT:",
                       status,
                       "SIZE:",
                       size
@@ -461,6 +481,11 @@ jobs:
                   if ok:
 
                       selected = stream_url
+
+                      print(
+                          "VTV SOURCE OK:",
+                          channel
+                      )
 
                       break
 
@@ -478,29 +503,24 @@ jobs:
                       (info, selected)
                   )
 
-                  print(
-                      "  VTV OK:",
-                      channel
-                  )
-
               else:
 
                   print(
-                      "  VTV FAILED:",
+                      "VTV FAILED:",
                       channel
                   )
 
 
           print("")
           print(
-              "VTV working channels:",
-              len(vtv_out)
+              "VTV WORKING:",
+              len(vtv_out),
+              "/ 9"
           )
 
 
           # ============================================================
           # ENGLISH
-          # KEEP ORIGINAL WORKING SOURCE
           # ============================================================
 
           print("")
@@ -562,9 +582,7 @@ jobs:
                   ]
               ):
 
-                  return (
-                      "🇬🇧 English | Kids"
-                  )
+                  return "🇬🇧 English | Kids"
 
 
               if any(
@@ -578,9 +596,7 @@ jobs:
                   ]
               ):
 
-                  return (
-                      "🇬🇧 English | Animation"
-                  )
+                  return "🇬🇧 English | Animation"
 
 
               if any(
@@ -592,9 +608,7 @@ jobs:
                   ]
               ):
 
-                  return (
-                      "🇬🇧 English | Family"
-                  )
+                  return "🇬🇧 English | Family"
 
 
               if any(
@@ -609,9 +623,7 @@ jobs:
                   ]
               ):
 
-                  return (
-                      "🇬🇧 English | Education"
-                  )
+                  return "🇬🇧 English | Education"
 
 
               if any(
@@ -625,9 +637,7 @@ jobs:
                   ]
               ):
 
-                  return (
-                      "🇬🇧 English | Science"
-                  )
+                  return "🇬🇧 English | Science"
 
 
               if any(
@@ -643,9 +653,7 @@ jobs:
                   ]
               ):
 
-                  return (
-                      "🇬🇧 English | Documentary"
-                  )
+                  return "🇬🇧 English | Documentary"
 
 
               if any(
@@ -661,9 +669,7 @@ jobs:
                   ]
               ):
 
-                  return (
-                      "🇬🇧 English | Movies"
-                  )
+                  return "🇬🇧 English | Movies"
 
 
               if any(
@@ -677,9 +683,7 @@ jobs:
                   ]
               ):
 
-                  return (
-                      "🇬🇧 English | Series"
-                  )
+                  return "🇬🇧 English | Series"
 
 
               if any(
@@ -694,9 +698,7 @@ jobs:
                   ]
               ):
 
-                  return (
-                      "🇬🇧 English | Music"
-                  )
+                  return "🇬🇧 English | Music"
 
 
               if any(
@@ -712,9 +714,7 @@ jobs:
                   ]
               ):
 
-                  return (
-                      "🇬🇧 English | Entertainment"
-                  )
+                  return "🇬🇧 English | Entertainment"
 
 
               if any(
@@ -736,9 +736,7 @@ jobs:
                   ]
               ):
 
-                  return (
-                      "🇬🇧 English | Sports"
-                  )
+                  return "🇬🇧 English | Sports"
 
 
               if any(
@@ -754,14 +752,10 @@ jobs:
                   ]
               ):
 
-                  return (
-                      "🇬🇧 English | News"
-                  )
+                  return "🇬🇧 English | News"
 
 
-              return (
-                  "🇬🇧 English | Entertainment"
-              )
+              return "🇬🇧 English | Entertainment"
 
 
           english_out = []
@@ -813,14 +807,8 @@ jobs:
 
 
           # ============================================================
-          # SAFETY CHECKS
+          # SAFETY CHECK
           # ============================================================
-
-          print("")
-          print("========================================")
-          print("SAFETY CHECK")
-          print("========================================")
-
 
           if len(japan_out) < 30:
 
@@ -847,7 +835,7 @@ jobs:
 
 
           # ============================================================
-          # BUILD FINAL PLAYLIST
+          # BUILD PLAYLIST
           # ============================================================
 
           output = [
@@ -860,7 +848,7 @@ jobs:
 
               "# Vietnam source preserved",
 
-              "# VTV sources checked dynamically",
+              "# VTV TV360 + VCDN",
 
               "# English source preserved",
 
@@ -887,44 +875,32 @@ jobs:
                   )
 
 
-          # ============================================================
-          # JAPAN
-          # ============================================================
-
+          # Japan
           add_channels(
               japan_out
           )
 
 
-          # ============================================================
-          # VIETNAM
-          # ============================================================
-
+          # Vietnam
           add_channels(
               vietnam_out
           )
 
 
-          # ============================================================
           # VTV
-          # ============================================================
-
           add_channels(
               vtv_out
           )
 
 
-          # ============================================================
-          # ENGLISH
-          # ============================================================
-
+          # English
           add_channels(
               english_out
           )
 
 
           # ============================================================
-          # WRITE FILE
+          # WRITE
           # ============================================================
 
           OUTPUT.write_text(
@@ -934,19 +910,14 @@ jobs:
 
 
           # ============================================================
-          # RESULT
+          # FINAL RESULT
           # ============================================================
 
           total = (
-
               len(japan_out)
-
               + len(vietnam_out)
-
               + len(vtv_out)
-
               + len(english_out)
-
           )
 
 
@@ -985,18 +956,10 @@ jobs:
           PYTHON
 
 
-      # ============================================================
-      # RUN GENERATOR
-      # ============================================================
-
       - name: Generate IPTV playlist
         run: |
           python generate.py
 
-
-      # ============================================================
-      # COMMIT
-      # ============================================================
 
       - name: Commit playlist
         run: |
