@@ -13,11 +13,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build IPTV playlist
+      - name: Build playlist
         env:
           JAPAN_URL: "https://raw.githubusercontent.com/ZXArkin/my-personal-iptv/iptv-radio/Japan.m3u"
           VIETNAM_URL: "https://raw.githubusercontent.com/ZXArkin/my-personal-iptv/iptv-radio/ZXIPTV.m3u"
@@ -25,17 +24,11 @@ jobs:
           CATEGORY_URL: "https://iptv-org.github.io/iptv/index.category.m3u"
 
         run: |
-
           python3 <<'PY'
-
           import os
           import re
           import urllib.request
           from pathlib import Path
-
-          # ============================================================
-          # CONFIG
-          # ============================================================
 
           JAPAN_URL = os.environ["JAPAN_URL"]
           VIETNAM_URL = os.environ["VIETNAM_URL"]
@@ -45,109 +38,90 @@ jobs:
           OUTPUT = Path("jp-vn.m3u")
           TEMP = Path("jp-vn.m3u.tmp")
 
-          USER_AGENT = (
+          UA = (
               "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
               "AppleWebKit/537.36 (KHTML, like Gecko) "
               "Chrome/131.0 Safari/537.36"
           )
 
-          # ============================================================
+          # ----------------------------------------------------------
           # DOWNLOAD
-          # ============================================================
+          # ----------------------------------------------------------
 
           def download(url):
-
-              request = urllib.request.Request(
+              req = urllib.request.Request(
                   url,
                   headers={
-                      "User-Agent": USER_AGENT,
+                      "User-Agent": UA,
                       "Accept": "*/*"
                   }
               )
 
-              with urllib.request.urlopen(
-                  request,
-                  timeout=60
-              ) as response:
-
-                  return response.read().decode(
+              with urllib.request.urlopen(req, timeout=60) as r:
+                  return r.read().decode(
                       "utf-8",
                       errors="replace"
                   )
 
-          # ============================================================
+          # ----------------------------------------------------------
           # PARSE M3U
-          # ============================================================
+          # ----------------------------------------------------------
 
           def parse_m3u(text):
-
               result = []
               current = None
 
               for line in text.splitlines():
-
                   line = line.strip()
 
                   if not line:
                       continue
 
                   if line.startswith("#EXTINF"):
-
                       current = {
                           "info": line,
                           "url": None
                       }
 
                   elif current and not line.startswith("#"):
-
                       current["url"] = line
                       result.append(current)
                       current = None
 
               return result
 
-          # ============================================================
+          # ----------------------------------------------------------
           # HELPERS
-          # ============================================================
+          # ----------------------------------------------------------
 
-          def get_name(entry):
-
-              info = entry["info"]
-
-              if "," in info:
-                  return info.split(",", 1)[1].strip()
-
+          def name(e):
+              if "," in e["info"]:
+                  return e["info"].split(",", 1)[1].strip()
               return ""
 
-          def get_id(entry):
-
-              match = re.search(
+          def tvgid(e):
+              m = re.search(
                   r'tvg-id="([^"]*)"',
-                  entry["info"],
+                  e["info"],
                   re.I
               )
+              return m.group(1).strip() if m else ""
 
-              return match.group(1).strip() if match else ""
-
-          def set_group(entry, group):
-
-              info = entry["info"]
+          def set_group(e, group):
+              info = e["info"]
 
               if re.search(
                   r'group-title="[^"]*"',
                   info,
                   re.I
               ):
-
                   info = re.sub(
                       r'group-title="[^"]*"',
                       f'group-title="{group}"',
                       info,
                       flags=re.I
                   )
-
               else:
-
                   info = info.replace(
                       "#EXTINF:-1",
                       f'#EXTINF:-1 group-title="{group}"',
@@ -156,44 +130,36 @@ jobs:
 
               return {
                   "info": info,
-                  "url": entry["url"]
+                  "url": e["url"]
               }
 
-          # ============================================================
+          # ==========================================================
           # JAPAN
-          # ============================================================
+          # ==========================================================
 
-          print("================================")
-          print("JAPAN")
-          print("================================")
+          print("Downloading Japan...")
 
-          japan_source = download(JAPAN_URL)
-          japan_entries = parse_m3u(japan_source)
+          japan = parse_m3u(
+              download(JAPAN_URL)
+          )
 
-          japan_result = []
           japan_seen = set()
+          japan_result = []
 
-          for entry in japan_entries:
-
-              name = get_name(entry)
-              tid = get_id(entry)
-
+          for e in japan:
               key = (
-                  tid.lower()
-                  or name.lower()
+                  tvgid(e).lower()
+                  or name(e).lower()
               )
 
-              if not key:
-                  continue
-
-              if key in japan_seen:
+              if not key or key in japan_seen:
                   continue
 
               japan_seen.add(key)
 
               japan_result.append(
                   set_group(
-                      entry,
+                      e,
                       "🇯🇵 Japan"
                   )
               )
@@ -203,243 +169,227 @@ jobs:
               len(japan_result)
           )
 
-          # ============================================================
+          # ==========================================================
           # VIETNAM
           #
-          # IMPORTANT:
-          # DO NOT FILTER VIETNAM BY KEYWORDS.
-          # Keep the original source.
-          # Only remove old VTV entries.
-          # ============================================================
+          # Keep the existing Vietnam source.
+          # DO NOT keyword-filter it.
+          #
+          # Only remove old VTV entries because we replace them with
+          # better direct VTV URLs below.
+          # ==========================================================
 
-          print("================================")
-          print("VIETNAM")
-          print("================================")
+          print("Downloading Vietnam...")
 
-          vietnam_source = download(VIETNAM_URL)
-          vietnam_entries = parse_m3u(vietnam_source)
+          vietnam = parse_m3u(
+              download(VIETNAM_URL)
+          )
 
-          def is_vtv(entry):
+          def is_old_vtv(e):
+              n = name(e).lower().strip()
+              t = tvgid(e).lower().strip()
 
-              name = get_name(entry).lower().strip()
-              tid = get_id(entry).lower().strip()
-
-              # VTV1 ... VTV9
               if re.match(
                   r"^vtv\s*[1-9]\s*(hd)?$",
-                  name
+                  n
               ):
                   return True
 
               if re.match(
                   r"^vtv[1-9](hd)?$",
-                  tid
+                  t
               ):
                   return True
 
-              # VTV stream IDs such as VTV1.vn@HD
               if re.match(
                   r"^vtv[1-9]\.vn@",
-                  tid
+                  t
               ):
                   return True
 
-              # VTV special channels
               special = [
-                  "vtv5 tây nguyên",
-                  "vtv5 tay nguyen",
                   "vtv5 tây nam bộ",
                   "vtv5 tay nam bo",
                   "vtv5 tnb",
+                  "vtv5 tây nguyên",
+                  "vtv5 tay nguyen",
                   "vtv cần thơ",
                   "vtv can tho",
                   "vtvct",
                   "vtv10"
               ]
 
-              text = name + " " + tid
+              text = n + " " + t
 
-              if any(
+              return any(
                   x in text
                   for x in special
-              ):
-                  return True
-
-              return False
+              )
 
           vietnam_result = []
+          vietnam_seen = set()
 
-          for entry in vietnam_entries:
+          for e in vietnam:
 
-              # Remove ONLY old VTV entries.
-              if is_vtv(entry):
+              if is_old_vtv(e):
                   continue
 
+              key = (
+                  tvgid(e).lower()
+                  or name(e).lower()
+              )
+
+              if not key or key in vietnam_seen:
+                  continue
+
+              vietnam_seen.add(key)
+
+              # ALL non-VTV Vietnamese channels are merged here.
               vietnam_result.append(
                   set_group(
-                      entry,
+                      e,
                       "🇻🇳 Vietnam"
                   )
               )
 
-          # Deduplicate while preserving source
-          vietnam_seen = set()
-          vietnam_clean = []
-
-          for entry in vietnam_result:
-
-              key = (
-                  get_id(entry).lower()
-                  or get_name(entry).lower()
-              )
-
-              if not key:
-                  continue
-
-              if key in vietnam_seen:
-                  continue
-
-              vietnam_seen.add(key)
-              vietnam_clean.append(entry)
-
           print(
               "Vietnam:",
-              len(vietnam_clean)
+              len(vietnam_result)
           )
 
-          # ============================================================
-          # VTV
+          # ==========================================================
+          # VTV DIRECT SOURCES
           #
-          # Official VTVGo CDN endpoints.
-          #
-          # NO GitHub-side stream test.
-          # NO FPT 403 test.
-          # ============================================================
+          # Direct FPT CDN sources.
+          # No GitHub stream testing.
+          # ==========================================================
 
-          print("================================")
-          print("VTV")
-          print("================================")
+          VTV = [
 
-          VTV = {
-
-              "VTV1": (
-                  "https://vtvgolive-failover.vtvdigital.vn/"
-                  "vtvgo/vtv1-manifest.m3u8"
+              (
+                  "VTV1",
+                  "https://live.fptplay53.net/"
+                  "live/media/vtv1/"
+                  "live247-hls-avc/index.m3u8",
+                  "https://i.imgur.com/nfkmvAY.png"
               ),
 
-              "VTV2": (
-                  "https://vtvgolive-failover.vtvdigital.vn/"
-                  "vtvgo/vtv2-manifest.m3u8"
+              (
+                  "VTV2",
+                  "https://live.fptplay53.net/"
+                  "live/media/vtv2/"
+                  "live247-hls-avc/index.m3u8",
+                  "https://i.imgur.com/BVwi3K3.png"
               ),
 
-              "VTV3": (
-                  "https://vtvgolive-failover.vtvdigital.vn/"
-                  "vtvgo/vtv3-manifest.m3u8"
+              (
+                  "VTV3",
+                  "https://live.fptplay53.net/"
+                  "live/media/vtv3/"
+                  "live247-hls-avc/index.m3u8",
+                  "https://i.imgur.com/7rLCvgS.png"
               ),
 
-              "VTV4": (
-                  "https://vtvgolive-failover.vtvdigital.vn/"
-                  "vtvgo/vtv4-manifest.m3u8"
+              (
+                  "VTV4",
+                  "https://live.fptplay53.net/"
+                  "live/media/vtv4/"
+                  "live247-hls-avc/index.m3u8",
+                  "https://i.imgur.com/9zVTtsA.png"
               ),
 
-              "VTV5": (
-                  "https://vtvgolive-failover.vtvdigital.vn/"
-                  "vtvgo/vtv5-manifest.m3u8"
+              (
+                  "VTV5",
+                  "https://live.fptplay53.net/"
+                  "live/media/vtv5/"
+                  "live247-hls-avc/index.m3u8",
+                  "https://i.imgur.com/7qPKNFU.png"
               ),
 
-              "VTV6": (
-                  "https://vtvgolive-failover.vtvdigital.vn/"
-                  "vtvgo/vtv6-manifest.m3u8"
+              (
+                  "VTV5 Tây Nam Bộ",
+                  "https://live.fptplay53.net/"
+                  "live/media/vtv5tnb/"
+                  "live-hls-avc/index.m3u8",
+                  "https://i.imgur.com/mIUWkDx.png"
               ),
 
-              "VTV7": (
-                  "https://vtvgolive-failover.vtvdigital.vn/"
-                  "vtvgo/vtv7-manifest.m3u8"
+              (
+                  "VTV5 Tây Nguyên",
+                  "https://live.fptplay53.net/"
+                  "live/media/vtv5tn/"
+                  "live-hls-avc/index.m3u8",
+                  "https://i.imgur.com/R8c2swd.png"
               ),
 
-              "VTV8": (
-                  "https://vtvgolive-failover.vtvdigital.vn/"
-                  "vtvgo/vtv8-manifest.m3u8"
-              ),
-
-              "VTV9": (
-                  "https://vtvgolive-failover.vtvdigital.vn/"
-                  "vtvgo/vtv9-manifest.m3u8"
-              ),
-
-              "VTV Cần Thơ": (
-                  "https://vtvgolive-failover.vtvdigital.vn/"
-                  "vtvgo/vtvct-manifest.m3u8"
-              )
-          }
-
-          VTV_LOGOS = {
-
-              "VTV1":
-                  "https://i.imgur.com/nfkmvAY.png",
-
-              "VTV2":
-                  "https://i.imgur.com/BVwi3K3.png",
-
-              "VTV3":
-                  "https://i.imgur.com/7rLCvgS.png",
-
-              "VTV4":
-                  "https://i.imgur.com/9zVTtsA.png",
-
-              "VTV5":
-                  "https://i.imgur.com/7qPKNFU.png",
-
-              "VTV6":
+              (
+                  "VTV6",
+                  "https://live.fptplay53.net/"
+                  "live/media/vtv6/"
+                  "live247-hls-avc/index.m3u8",
                   "https://raw.githubusercontent.com/"
-                  "ntd249/logochannel/refs/heads/main/VTV6.png",
+                  "ntd249/logochannel/refs/heads/main/VTV6.png"
+              ),
 
-              "VTV7":
-                  "https://i.imgur.com/AgamSNe.png",
+              (
+                  "VTV7",
+                  "https://live.fptplay53.net/"
+                  "live/media/vtv7/"
+                  "live247-hls-avc/index.m3u8",
+                  "https://i.imgur.com/AgamSNe.png"
+              ),
 
-              "VTV8":
-                  "https://i.imgur.com/lpcltL9.png",
+              (
+                  "VTV8",
+                  "https://live.fptplay53.net/"
+                  "live/media/vtv8/"
+                  "live-hls-avc/index.m3u8",
+                  "https://i.imgur.com/lpcltL9.png"
+              ),
 
-              "VTV9":
+              (
+                  "VTV9",
+                  "https://live.fptplay53.net/"
+                  "live/media/vtv9/"
+                  "live247-hls-avc/index.m3u8",
                   "https://i.imgur.com/Ex1VkGQ.png"
-          }
+              ),
+
+              (
+                  "VTV10",
+                  "https://live.fptplay53.net/"
+                  "live/media/vtv10/"
+                  "live247-hls-avc/index.m3u8",
+                  "https://raw.githubusercontent.com/"
+                  "ntd249/logochannel/refs/heads/main/VTV10.png"
+              )
+          ]
 
           vtv_result = []
 
-          for channel, url in VTV.items():
+          for channel, url, logo in VTV:
 
-              if channel == "VTV Cần Thơ":
-
-                  tid = "VTV10.vn@HD"
-                  logo = ""
-                  display = "VTV Cần Thơ HD"
-
-              else:
-
-                  number = channel.replace(
-                      "VTV",
-                      ""
-                  )
-
-                  tid = (
-                      f"VTV{number}.vn@HD"
-                  )
-
-                  logo = VTV_LOGOS.get(
-                      channel,
-                      ""
-                  )
-
-                  display = (
-                      f"{channel} HD"
-                  )
+              safe_id = (
+                  channel
+                  .lower()
+                  .replace(" ", "")
+                  .replace("â", "a")
+                  .replace("đ", "d")
+                  .replace("ộ", "o")
+                  .replace("ô", "o")
+                  .replace("ơ", "o")
+                  .replace("ư", "u")
+                  .replace("ă", "a")
+                  .replace("ê", "e")
+                  .replace("ế", "e")
+              )
 
               info = (
                   '#EXTINF:-1 '
-                  f'tvg-id="{tid}" '
-                  'group-title="🇻🇳 VTV" '
+                  f'tvg-id="{safe_id}.vn" '
+                  'group-title="🇻🇳 Vietnam | VTV" '
                   f'tvg-logo="{logo}",'
-                  f'{display}'
+                  f'{channel} HD'
               )
 
               vtv_result.append({
@@ -452,116 +402,125 @@ jobs:
               len(vtv_result)
           )
 
-          # ============================================================
+          # ==========================================================
           # ENGLISH
-          # ============================================================
+          # ==========================================================
 
-          print("================================")
-          print("ENGLISH")
-          print("================================")
+          print("Downloading English...")
 
-          english_source = download(
-              ENGLISH_URL
+          english = parse_m3u(
+              download(ENGLISH_URL)
           )
 
-          english_entries = parse_m3u(
-              english_source
+          categories = parse_m3u(
+              download(CATEGORY_URL)
           )
 
-          category_source = download(
-              CATEGORY_URL
-          )
+          category_map = {}
 
-          category_entries = parse_m3u(
-              category_source
-          )
+          for e in categories:
+              tid = tvgid(e).lower()
 
-          categories = {}
+              if tid:
+                  category_map[tid] = (
+                      e["info"]
+                      + " "
+                      + name(e)
+                  ).lower()
 
-          for entry in category_entries:
+          # ----------------------------------------------------------
+          # Desired categories
+          # ----------------------------------------------------------
 
-              tid = get_id(entry).lower()
+          category_rules = {
 
-              if not tid:
-                  continue
+              "Kids": [
+                  "kids",
+                  "children",
+                  "preschool"
+              ],
 
-              categories[tid] = (
-                  get_name(entry)
-                  + " "
-                  + entry["info"]
-              ).lower()
+              "Animation": [
+                  "animation",
+                  "cartoon",
+                  "anime"
+              ],
 
-          # ============================================================
-          # ENGLISH CATEGORIES
-          # ============================================================
+              "Family": [
+                  "family"
+              ],
 
-          wanted = [
+              "Education": [
+                  "education",
+                  "educational",
+                  "learning"
+              ],
 
-              "kids",
-              "children",
-              "animation",
-              "family",
+              "Science": [
+                  "science",
+                  "technology",
+                  "tech"
+              ],
 
-              "education",
-              "educational",
+              "Documentary": [
+                  "documentary",
+                  "documentaries"
+              ],
 
-              "science",
+              "Movies": [
+                  "movie",
+                  "movies",
+                  "film"
+              ],
 
-              "documentary",
-              "documentaries",
+              "Series": [
+                  "series",
+                  "drama"
+              ],
 
-              "movie",
-              "movies",
-              "film",
+              "Music": [
+                  "music",
+                  "musical"
+              ],
 
-              "series",
+              "Entertainment": [
+                  "entertainment",
+                  "lifestyle",
+                  "culture",
+                  "travel",
+                  "food"
+              ],
 
-              "entertainment",
+              "Sports": [
+                  "sports",
+                  "sport"
+              ],
 
-              "music",
-
-              "sports",
-              "sport",
-
-              "news",
-
-              "general",
-
-              "lifestyle",
-
-              "culture",
-
-              "travel"
-          ]
+              "News": [
+                  "news"
+              ]
+          }
 
           blocked = [
-
               "adult",
               "xxx",
               "porn",
-
               "casino",
               "gambling",
-
               "shopping",
-
               "religion",
               "religious",
-
               "weather",
-
               "business",
               "stock",
-
               "legislative",
               "parliament",
-
               "court",
-
               "pluto"
           ]
 
-          english_countries = {
+          # English-speaking markets
+          english_countries = [
               "us",
               "gb",
               "uk",
@@ -569,77 +528,62 @@ jobs:
               "au",
               "nz",
               "ie"
-          }
+          ]
 
-          global_brands = [
-
+          global_english = [
               "bbc",
               "bbc news",
               "bbc earth",
-
               "sky news",
               "sky cinema",
               "sky arts",
               "sky max",
-
               "itv",
               "channel 4",
               "channel 5",
-
               "abc",
               "cbs",
               "nbc",
               "fox",
               "pbs",
-
               "cnn",
               "cnbc",
               "msnbc",
-
               "national geographic",
               "nat geo",
-
               "discovery",
               "animal planet",
               "history",
-
               "smithsonian",
-
               "nickelodeon",
               "nick jr",
               "cartoon network",
               "cartoonito",
               "boomerang",
-
               "disney",
-
               "mtv",
               "vh1",
-
               "espn",
               "wwe",
               "eurosport",
               "tennis channel",
-
               "travel channel",
               "food network"
           ]
 
-          def english_country(text):
+          def has_english_country(text):
 
               text = text.lower()
 
-              for country in english_countries:
+              for c in english_countries:
 
                   patterns = [
-
-                      f".{country}",
-                      f"@{country}",
-                      f"_{country}",
-                      f"-{country}",
-                      f"({country})",
-                      f" {country} "
-
+                      f".{c}",
+                      f"@{c}",
+                      f"_{c}",
+                      f"-{c}",
+                      f"({c})",
+                      f" {c} "
                   ]
 
                   if any(
@@ -652,76 +596,72 @@ jobs:
 
           english_result = []
 
-          for entry in english_entries:
+          for e in english:
 
-              tid = get_id(entry).lower()
-              name = get_name(entry).lower()
-              info = entry["info"].lower()
-              url = entry["url"].lower()
+              tid = tvgid(e).lower()
+              n = name(e).lower()
+              info = e["info"].lower()
+              url = e["url"].lower()
 
-              text = (
+              full = (
                   tid
                   + " "
-                  + name
+                  + n
                   + " "
                   + info
                   + " "
                   + url
+                  + " "
+                  + category_map.get(tid, "")
               )
 
-              # Block unwanted channels
               if any(
-                  x in text
+                  x in full
                   for x in blocked
               ):
                   continue
 
-              category = categories.get(
-                  tid,
-                  ""
-              )
-
-              combined = (
-                  text
-                  + " "
-                  + category
-              )
-
-              # Only requested categories
-              if not any(
-                  x in combined
-                  for x in wanted
-              ):
-                  continue
-
-              # English-speaking country
-              # or major international English brand
-              if not english_country(combined):
+              if not has_english_country(full):
 
                   if not any(
-                      brand in combined
-                      for brand in global_brands
+                      brand in full
+                      for brand in global_english
                   ):
                       continue
 
-              english_result.append(
-                  set_group(
-                      entry,
-                      "🇬🇧 English"
-                  )
+              chosen_category = None
+
+              for category, keywords in category_rules.items():
+
+                  if any(
+                      k in full
+                      for k in keywords
+                  ):
+
+                      chosen_category = category
+                      break
+
+              if chosen_category is None:
+                  continue
+
+              e = set_group(
+                  e,
+                  f"🇬🇧 English | {chosen_category}"
               )
 
-          # ============================================================
-          # DEDUP ENGLISH
-          # ============================================================
+              english_result.append(e)
+
+          # ----------------------------------------------------------
+          # Deduplicate English
+          # ----------------------------------------------------------
 
           english_seen = {}
 
-          for entry in english_result:
+          for e in english_result:
 
               key = (
-                  get_id(entry).lower()
-                  or get_name(entry).lower()
+                  tvgid(e).lower()
+                  or name(e).lower()
               )
 
               if not key:
@@ -729,14 +669,14 @@ jobs:
 
               if key not in english_seen:
 
-                  english_seen[key] = entry
+                  english_seen[key] = e
 
               else:
 
                   old = english_seen[key]
 
                   old_info = old["info"].lower()
-                  new_info = entry["info"].lower()
+                  new_info = e["info"].lower()
 
                   old_hd = (
                       " hd" in old_info
@@ -751,7 +691,7 @@ jobs:
                   )
 
                   if new_hd and not old_hd:
-                      english_seen[key] = entry
+                      english_seen[key] = e
 
           english_result = list(
               english_seen.values()
@@ -762,240 +702,161 @@ jobs:
               len(english_result)
           )
 
-          # ============================================================
+          # ==========================================================
           # FINAL
-          # ============================================================
+          # ==========================================================
 
-          final_entries = (
+          final = (
               japan_result
-              + vietnam_clean
+              + vietnam_result
               + vtv_result
               + english_result
           )
 
-          total = len(final_entries)
+          total = len(final)
 
           print("")
-          print("================================")
-          print("FINAL")
-          print("================================")
+          print("========================================")
+          print("FINAL RESULT")
+          print("========================================")
+          print("Japan   :", len(japan_result))
+          print("Vietnam :", len(vietnam_result))
+          print("VTV     :", len(vtv_result))
+          print("English :", len(english_result))
+          print("TOTAL   :", total)
+          print("========================================")
 
-          print(
-              "Japan   :",
-              len(japan_result)
-          )
-
-          print(
-              "Vietnam :",
-              len(vietnam_clean)
-          )
-
-          print(
-              "VTV     :",
-              len(vtv_result)
-          )
-
-          print(
-              "English :",
-              len(english_result)
-          )
-
-          print(
-              "TOTAL   :",
-              total
-          )
-
-          print("================================")
-
-          # ============================================================
+          # ==========================================================
           # SAFETY
-          # ============================================================
+          # ==========================================================
 
           if len(japan_result) < 30:
-
               raise RuntimeError(
                   "Japan source unexpectedly small."
               )
 
-          if len(vietnam_clean) < 50:
-
+          if len(vietnam_result) < 50:
               raise RuntimeError(
                   "Vietnam source unexpectedly small."
               )
 
-          if len(vtv_result) != 10:
-
+          if len(vtv_result) < 9:
               raise RuntimeError(
                   "VTV list was not generated correctly."
               )
 
           if len(english_result) < 500:
-
               raise RuntimeError(
-                  "English source unexpectedly small."
+                  "English list unexpectedly small."
               )
 
           if total < 800:
-
               raise RuntimeError(
                   "Final playlist unexpectedly small."
               )
 
-          # ============================================================
-          # WRITE PLAYLIST
-          # ============================================================
+          # ==========================================================
+          # WRITE
+          # ==========================================================
 
-          output = []
-
-          output.append("#EXTM3U")
-          output.append("")
-          output.append(
+          lines = [
+              "#EXTM3U",
+              "",
+              "# ========================================",
+              "# 🇯🇵 JAPAN",
               "# ========================================"
-          )
-          output.append("# 🇯🇵 JAPAN")
-          output.append(
+          ]
+
+          for e in japan_result:
+              lines.append(e["info"])
+              lines.append(e["url"])
+
+          lines += [
+              "",
+              "# ========================================",
+              "# 🇻🇳 VIETNAM",
               "# ========================================"
-          )
+          ]
 
-          for entry in japan_result:
+          for e in vietnam_result:
+              lines.append(e["info"])
+              lines.append(e["url"])
 
-              output.append(
-                  entry["info"]
-              )
-
-              output.append(
-                  entry["url"]
-              )
-
-          output.append("")
-          output.append(
+          lines += [
+              "",
+              "# ========================================",
+              "# 🇻🇳 VIETNAM | VTV",
               "# ========================================"
-          )
-          output.append("# 🇻🇳 VIETNAM")
-          output.append(
+          ]
+
+          for e in vtv_result:
+              lines.append(e["info"])
+              lines.append(e["url"])
+
+          lines += [
+              "",
+              "# ========================================",
+              "# 🇬🇧 ENGLISH",
               "# ========================================"
-          )
+          ]
 
-          for entry in vietnam_clean:
-
-              output.append(
-                  entry["info"]
-              )
-
-              output.append(
-                  entry["url"]
-              )
-
-          output.append("")
-          output.append(
-              "# ========================================"
-          )
-          output.append("# 🇻🇳 VTV")
-          output.append(
-              "# ========================================"
-          )
-
-          for entry in vtv_result:
-
-              output.append(
-                  entry["info"]
-              )
-
-              output.append(
-                  entry["url"]
-              )
-
-          output.append("")
-          output.append(
-              "# ========================================"
-          )
-          output.append("# 🇬🇧 ENGLISH")
-          output.append(
-              "# ========================================"
-          )
-
-          for entry in english_result:
-
-              output.append(
-                  entry["info"]
-              )
-
-              output.append(
-                  entry["url"]
-              )
+          for e in english_result:
+              lines.append(e["info"])
+              lines.append(e["url"])
 
           TEMP.write_text(
-              "\n".join(output) + "\n",
+              "\n".join(lines) + "\n",
               encoding="utf-8"
           )
 
-          # ============================================================
-          # FINAL VALIDATION
-          # ============================================================
-
-          generated = TEMP.read_text(
+          # Final validation
+          content = TEMP.read_text(
               encoding="utf-8"
           )
 
-          channel_count = generated.count(
-              "#EXTINF"
-          )
+          count = content.count("#EXTINF")
 
-          if channel_count < 800:
-
+          if count < 800:
               raise RuntimeError(
-                  "Generated playlist is unexpectedly small."
+                  "Generated playlist is too small."
               )
 
-          # Only now replace real playlist.
-          TEMP.replace(
-              OUTPUT
-          )
+          # Only replace after ALL checks pass.
+          TEMP.replace(OUTPUT)
 
           print("")
           print(
-              "SUCCESS - playlist generated:",
-              channel_count,
+              "SUCCESS:",
+              count,
               "channels"
           )
-
           PY
 
-      - name: Verify playlist
+      - name: Verify
         run: |
-
           test -s jp-vn.m3u
 
           COUNT=$(grep -c '^#EXTINF' jp-vn.m3u || true)
 
-          echo "Playlist channels: $COUNT"
+          echo "Final channels: $COUNT"
 
           if [ "$COUNT" -lt 800 ]; then
-            echo "ERROR: playlist too small"
+            echo "ERROR: Playlist too small."
             exit 1
           fi
 
-          echo "Playlist OK"
+          echo "Playlist verification OK."
 
-      - name: Commit and push
+      - name: Commit
         run: |
-
           git config user.name "github-actions[bot]"
-
-          git config user.email \
-            "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           git add jp-vn.m3u
 
           if git diff --cached --quiet; then
-
             echo "No changes."
-
           else
-
-            git commit \
-              -m "Update Japan Vietnam VTV English IPTV"
-
+            git commit -m "Update IPTV Japan Vietnam English"
             git push
-
           fi
