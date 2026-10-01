@@ -1,9 +1,9 @@
-name: Update JP-VN IPTV
+name: Update JP-VN IPTV Playlist
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 */6 * * *"
+    - cron: "15 */6 * * *"
 
 permissions:
   contents: write
@@ -13,92 +13,39 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Build IPTV playlist
+        shell: bash
         run: |
-          python - <<'PY'
+          python3 <<'PY'
           import json
+          import re
           import urllib.request
+          from collections import defaultdict
 
-          API = "https://iptv-org.github.io/api"
+          CHANNELS_URL = "https://iptv-org.github.io/api/channels.json"
+          FEEDS_URL    = "https://iptv-org.github.io/api/feeds.json"
+          STREAMS_URL  = "https://iptv-org.github.io/api/streams.json"
 
-          JAPAN_PLAYLIST = (
-              "https://iptv-org.github.io/iptv/countries/jp.m3u"
-          )
+          # Nhật: dùng internal stream list để lấy được nhiều kênh hơn
+          JAPAN_STREAMS_URL = "https://raw.githubusercontent.com/iptv-org/iptv/master/streams/jp.m3u"
 
-          def get_json(url):
-              print("Downloading:", url)
+          OUTPUT = "jp-vn.m3u"
 
-              request = urllib.request.Request(
-                  url,
-                  headers={"User-Agent": "Mozilla/5.0"}
-              )
+          UA = "Mozilla/5.0 IPTV-Builder/1.0"
 
-              with urllib.request.urlopen(
-                  request,
-                  timeout=180
-              ) as response:
+          ENGLISH_COUNTRIES = {
+              "US", "GB", "CA", "AU", "NZ", "IE"
+          }
 
-                  return json.loads(
-                      response.read().decode(
-                          "utf-8",
-                          errors="ignore"
-                      )
-                  )
-
-          def get_text(url):
-              print("Downloading:", url)
-
-              request = urllib.request.Request(
-                  url,
-                  headers={"User-Agent": "Mozilla/5.0"}
-              )
-
-              with urllib.request.urlopen(
-                  request,
-                  timeout=180
-              ) as response:
-
-                  return response.read().decode(
-                      "utf-8",
-                      errors="ignore"
-                  )
-
-          print("========================================")
-          print("Downloading iptv-org API")
-          print("========================================")
-
-          channels = get_json(
-              f"{API}/channels.json"
-          )
-
-          feeds = get_json(
-              f"{API}/feeds.json"
-          )
-
-          streams = get_json(
-              f"{API}/streams.json"
-          )
-
-          print("Channels:", len(channels))
-          print("Feeds:", len(feeds))
-          print("Streams:", len(streams))
-
-          # ========================================================
-          # SETTINGS
-          # ========================================================
-
-          JAPANESE = "jpn"
-          VIETNAMESE = "vie"
-          ENGLISH = "eng"
-
-          ENGLISH_ALLOWED = {
+          ENGLISH_CATEGORIES = {
               "animation",
               "children",
+              "kids",
               "education",
               "entertainment",
               "family",
@@ -110,766 +57,580 @@ jobs:
               "documentary"
           }
 
+          LEARNING_CATEGORIES = {
+              "animation",
+              "children",
+              "kids",
+              "education",
+              "family",
+              "science",
+              "documentary"
+          }
+
           BLOCKED_CATEGORIES = {
               "adult",
+              "xxx",
               "religious",
-              "shopping",
               "shop",
+              "shopping",
               "weather",
               "business",
               "legislative"
           }
 
-          ENGLISH_MAIN_COUNTRIES = {
-              "us",
-              "gb",
-              "ca",
-              "au",
-              "nz",
-              "ie"
+          def download(url):
+              req = urllib.request.Request(url, headers={"User-Agent": UA})
+              with urllib.request.urlopen(req, timeout=60) as r:
+                  return r.read().decode("utf-8", errors="replace")
+
+          def get_json(url):
+              return json.loads(download(url))
+
+          print("Downloading IPTV database...")
+
+          channels = get_json(CHANNELS_URL)
+          feeds    = get_json(FEEDS_URL)
+          streams  = get_json(STREAMS_URL)
+
+          channel_by_id = {
+              c["id"]: c for c in channels
+              if c.get("id")
           }
 
-          # ========================================================
-          # HELPERS
-          # ========================================================
+          # ------------------------------------------------------------
+          # LANGUAGE MAP
+          # Current iptv-org API stores languages in feeds.json
+          # ------------------------------------------------------------
 
-          def get_name(channel):
-              return (
-                  channel.get("name")
-                  or channel.get("native_name")
-                  or channel.get("id")
-                  or "Unknown"
-              )
+          channel_languages = defaultdict(set)
 
-          def get_categories(channel):
-              value = channel.get(
-                  "categories",
-                  []
-              )
+          for f in feeds:
+              cid = f.get("channel")
+              if not cid:
+                  continue
 
-              result = set()
+              for lang in f.get("languages") or []:
+                  channel_languages[cid].add(lang.lower())
 
-              if isinstance(value, list):
-                  for item in value:
-                      if isinstance(item, str):
-                          result.add(
-                              item.lower()
-                          )
+          # ------------------------------------------------------------
+          # LOGO
+          # ------------------------------------------------------------
 
-              return result
+          logo_map = {}
 
-          def get_country(channel):
-              value = channel.get(
-                  "country",
-                  ""
-              )
+          try:
+              logos = get_json("https://iptv-org.github.io/api/logos.json")
 
-              if isinstance(value, str):
-                  return value.lower()
+              for logo in logos:
+                  cid = logo.get("channel")
+                  url = logo.get("url")
 
-              return ""
+                  if cid and url and cid not in logo_map:
+                      if logo.get("in_use", True):
+                          logo_map[cid] = url
 
-          def get_languages(feed):
-              value = feed.get(
-                  "languages",
-                  []
-              )
+          except Exception as e:
+              print("Logo download warning:", e)
 
-              result = set()
+          # ------------------------------------------------------------
+          # STREAM QUALITY SCORING
+          # ------------------------------------------------------------
 
-              if isinstance(value, list):
-                  for item in value:
-                      if isinstance(item, str):
-                          result.add(
-                              item.lower()
-                          )
+          def quality_number(q):
+              if not q:
+                  return 0
 
-              return result
+              m = re.search(r"(\d+)", str(q))
 
-          def blocked_name(name):
-              text = name.lower()
+              if m:
+                  return int(m.group(1))
 
-              blocked_words = [
-                  "pluto tv",
-                  "pluto",
-                  "adult",
-                  "porn",
-                  "xxx"
+              return 0
+
+          def stream_score(s):
+              url = (s.get("url") or "").lower()
+
+              labels = [
+                  str(x).lower()
+                  for x in (s.get("labels") or [])
               ]
-
-              return any(
-                  word in text
-                  for word in blocked_words
-              )
-
-          # ========================================================
-          # CHANNEL MAP
-          # ========================================================
-
-          channel_map = {}
-
-          for channel in channels:
-
-              channel_id = channel.get(
-                  "id"
-              )
-
-              if channel_id:
-                  channel_map[channel_id] = channel
-
-          # ========================================================
-          # FEEDS
-          # ========================================================
-
-          feeds_by_channel = {}
-
-          for feed in feeds:
-
-              channel_id = feed.get(
-                  "channel"
-              )
-
-              feed_id = feed.get(
-                  "id"
-              )
-
-              if not channel_id or not feed_id:
-                  continue
-
-              feeds_by_channel.setdefault(
-                  channel_id,
-                  []
-              ).append(feed)
-
-          # ========================================================
-          # STREAMS
-          # ========================================================
-
-          streams_by_channel = {}
-
-          for stream in streams:
-
-              channel_id = stream.get(
-                  "channel"
-              )
-
-              if not channel_id:
-                  continue
-
-              streams_by_channel.setdefault(
-                  channel_id,
-                  []
-              ).append(stream)
-
-          # ========================================================
-          # STREAM SCORE
-          # ========================================================
-
-          def stream_score(stream):
 
               score = 0
 
-              url = str(
-                  stream.get(
-                      "url",
-                      ""
-                  )
-              ).lower()
-
-              quality = str(
-                  stream.get(
-                      "quality",
-                      ""
-                  )
-              ).lower()
-
-              status = str(
-                  stream.get(
-                      "status",
-                      ""
-                  )
-              ).lower()
-
-              label = str(
-                  stream.get(
-                      "label",
-                      ""
-                  )
-              ).lower()
-
-              if url.startswith(
-                  "https://"
-              ):
-                  score += 30
+              if url.startswith("https://"):
+                  score += 100
 
               if ".m3u8" in url:
-                  score += 40
+                  score += 80
 
-              if "1080" in quality:
-                  score += 30
+              score += quality_number(s.get("quality")) // 10
 
-              elif "720" in quality:
-                  score += 20
+              if "geo-blocked" in labels:
+                  score -= 250
 
-              elif "576" in quality:
-                  score += 10
+              if "not 24/7" in labels:
+                  score -= 80
 
-              if status == "online":
-                  score += 50
-
-              if "geo" in label:
-                  score -= 100
-
-              if "blocked" in label:
-                  score -= 100
+              if "offline" in labels:
+                  score -= 1000
 
               return score
 
-          # ========================================================
-          # START PLAYLIST
-          # ========================================================
+          # ------------------------------------------------------------
+          # SELECT BEST STREAM PER CHANNEL
+          # ------------------------------------------------------------
 
-          output = [
-              "#EXTM3U"
-          ]
+          streams_by_channel = defaultdict(list)
 
-          used_urls = set()
-          used_channel_ids = set()
+          for s in streams:
+              cid = s.get("channel")
+              url = s.get("url")
 
-          count_japan = 0
-          count_vietnam = 0
-          count_english = 0
+              if cid and url:
+                  streams_by_channel[cid].append(s)
 
-          # ========================================================
-          # JAPAN
-          #
-          # IMPORTANT:
-          # Use the official iptv-org Japan country playlist.
-          # This avoids losing Japanese channels because of
-          # feed/stream API relationships.
-          # ========================================================
+          best_stream = {}
 
-          print("")
-          print("========================================")
-          print("Adding Japanese channels")
-          print("========================================")
-
-          japan_data = get_text(
-              JAPAN_PLAYLIST
-          )
-
-          japan_lines = japan_data.splitlines()
-
-          i = 0
-
-          while i < len(japan_lines):
-
-              if (
-                  japan_lines[i].startswith("#EXTINF")
-                  and i + 1 < len(japan_lines)
-              ):
-
-                  info = japan_lines[i]
-                  url = japan_lines[i + 1].strip()
-
-                  if (
-                      url
-                      and url.startswith(
-                          ("http://", "https://")
-                      )
-                      and url not in used_urls
-                  ):
-
-                      # Add Japan group
-                      if "group-title=" in info:
-
-                          start = info.find(
-                              'group-title="'
-                          )
-
-                          if start >= 0:
-
-                              start += len(
-                                  'group-title="'
-                              )
-
-                              end = info.find(
-                                  '"',
-                                  start
-                              )
-
-                              if end >= 0:
-
-                                  info = (
-                                      info[:start]
-                                      + "Japan"
-                                      + info[end:]
-                                  )
-
-                      else:
-
-                          comma = info.rfind(",")
-
-                          if comma >= 0:
-
-                              name = info[
-                                  comma + 1:
-                              ].strip()
-
-                              info = (
-                                  info[:comma]
-                                  + ' group-title="Japan",'
-                                  + name
-                              )
-
-                      output.append(info)
-                      output.append(url)
-
-                      used_urls.add(url)
-
-                      count_japan += 1
-
-                  i += 2
-
-              else:
-                  i += 1
-
-          print(
-              "Japanese channels:",
-              count_japan
-          )
-
-          # ========================================================
-          # VIETNAM + ENGLISH
-          # ========================================================
-
-          candidates = []
-
-          for channel_id, channel in channel_map.items():
-
-              name = get_name(channel)
-
-              if blocked_name(name):
-                  continue
-
-              channel_categories = get_categories(
-                  channel
-              )
-
-              if (
-                  channel_categories
-                  & BLOCKED_CATEGORIES
-              ):
-                  continue
-
-              country = get_country(
-                  channel
-              )
-
-              channel_feeds = feeds_by_channel.get(
-                  channel_id,
-                  []
-              )
-
-              for feed in channel_feeds:
-
-                  feed_id = feed.get(
-                      "id"
-                  )
-
-                  feed_languages = get_languages(
-                      feed
-                  )
-
-                  # ------------------------------------------------
-                  # VIETNAM
-                  # ------------------------------------------------
-
-                  if VIETNAMESE in feed_languages:
-
-                      candidates.append({
-                          "channel_id": channel_id,
-                          "feed_id": feed_id,
-                          "type": "VIETNAM",
-                          "channel": channel,
-                          "feed": feed
-                      })
-
-                      continue
-
-                  # ------------------------------------------------
-                  # ENGLISH
-                  # ------------------------------------------------
-
-                  if ENGLISH in feed_languages:
-
-                      wanted = (
-                          channel_categories
-                          & ENGLISH_ALLOWED
-                      )
-
-                      if not wanted:
-                          continue
-
-                      learning_categories = {
-                          "children",
-                          "animation",
-                          "education",
-                          "science",
-                          "documentary"
-                      }
-
-                      learning_channel = bool(
-                          channel_categories
-                          & learning_categories
-                      )
-
-                      entertainment_categories = {
-                          "movies",
-                          "series",
-                          "music",
-                          "family",
-                          "entertainment",
-                          "sports"
-                      }
-
-                      entertainment_channel = bool(
-                          channel_categories
-                          & entertainment_categories
-                      )
-
-                      if learning_channel:
-
-                          candidates.append({
-                              "channel_id": channel_id,
-                              "feed_id": feed_id,
-                              "type": "ENGLISH",
-                              "channel": channel,
-                              "feed": feed
-                          })
-
-                      elif (
-                          entertainment_channel
-                          and country
-                          in ENGLISH_MAIN_COUNTRIES
-                      ):
-
-                          candidates.append({
-                              "channel_id": channel_id,
-                              "feed_id": feed_id,
-                              "type": "ENGLISH",
-                              "channel": channel,
-                              "feed": feed
-                          })
-
-          print("")
-          print("========================================")
-          print(
-              "Vietnam/English candidate feeds:",
-              len(candidates)
-          )
-          print("========================================")
-
-          # ========================================================
-          # ADD VIETNAM + ENGLISH
-          # ========================================================
-
-          for candidate in sorted(
-              candidates,
-              key=lambda x: (
-                  x["type"],
-                  get_name(
-                      x["channel"]
-                  ).lower()
-              )
-          ):
-
-              channel = candidate[
-                  "channel"
-              ]
-
-              feed = candidate[
-                  "feed"
-              ]
-
-              channel_id = candidate[
-                  "channel_id"
-              ]
-
-              feed_id = candidate[
-                  "feed_id"
-              ]
-
-              channel_type = candidate[
-                  "type"
-              ]
-
-              name = get_name(
-                  channel
-              )
-
-              # One channel only
-              if channel_id in used_channel_ids:
-                  continue
-
-              channel_streams = (
-                  streams_by_channel.get(
-                      channel_id,
-                      []
-                  )
-              )
-
-              valid_streams = []
-
-              for stream in channel_streams:
-
-                  url = stream.get(
-                      "url"
-                  )
-
-                  if not url:
-                      continue
-
-                  if not isinstance(
-                      url,
-                      str
-                  ):
-                      continue
-
-                  url = url.strip()
-
-                  if not url.startswith(
-                      ("http://", "https://")
-                  ):
-                      continue
-
-                  stream_feed = stream.get(
-                      "feed"
-                  )
-
-                  if stream_feed:
-
-                      if stream_feed != feed_id:
-                          continue
-
-                  valid_streams.append(
-                      stream
-                  )
-
-              if not valid_streams:
-                  continue
-
-              valid_streams.sort(
+          for cid, items in streams_by_channel.items():
+              items = sorted(
+                  items,
                   key=stream_score,
                   reverse=True
               )
 
-              chosen = None
+              if items:
+                  best_stream[cid] = items[0]
 
-              for stream in valid_streams:
+          # ------------------------------------------------------------
+          # OUTPUT STORAGE
+          # ------------------------------------------------------------
 
-                  url = stream.get(
-                      "url",
-                      ""
-                  ).strip()
+          output_entries = []
+          used_keys = set()
 
-                  if url in used_urls:
-                      continue
+          counts = {
+              "Japan": 0,
+              "Vietnam": 0,
+              "English": 0
+          }
 
-                  chosen = stream
-                  break
+          def clean_name(name):
+              name = re.sub(
+                  r"\s*\((?:2160|1440|1080|720|576|540|480|360)p\)\s*",
+                  " ",
+                  name,
+                  flags=re.I
+              )
 
-              if not chosen:
-                  continue
-
-              stream_url = chosen.get(
-                  "url",
-                  ""
+              name = re.sub(
+                  r"\s+",
+                  " ",
+                  name
               ).strip()
 
-              used_urls.add(
-                  stream_url
+              return name
+
+          def add_entry(
+              name,
+              url,
+              group,
+              country_group,
+              tvg_id="",
+              logo="",
+              referrer=None,
+              user_agent=None
+          ):
+              if not name or not url:
+                  return
+
+              name = clean_name(name)
+
+              key = (
+                  tvg_id.lower().strip()
+                  if tvg_id
+                  else name.lower().strip()
               )
 
-              used_channel_ids.add(
-                  channel_id
-              )
+              dedupe_key = (country_group, key)
 
-              # ------------------------------------------------
-              # GROUP
-              # ------------------------------------------------
+              if dedupe_key in used_keys:
+                  return
 
-              if channel_type == "VIETNAM":
+              used_keys.add(dedupe_key)
 
-                  group = "Vietnam"
+              attrs = []
 
-                  count_vietnam += 1
-
-              else:
-
-                  cats = get_categories(
-                      channel
+              if tvg_id:
+                  attrs.append(
+                      f'tvg-id="{tvg_id}"'
                   )
 
-                  if (
-                      "children" in cats
-                      or "animation" in cats
-                  ):
+              if logo:
+                  attrs.append(
+                      f'tvg-logo="{logo}"'
+                  )
 
-                      group = (
-                          "English | Kids"
-                      )
-
-                  elif (
-                      "education" in cats
-                      or "science" in cats
-                  ):
-
-                      group = (
-                          "English | Education"
-                      )
-
-                  elif "documentary" in cats:
-
-                      group = (
-                          "English | Documentary"
-                      )
-
-                  elif (
-                      "movies" in cats
-                      or "series" in cats
-                  ):
-
-                      group = (
-                          "English | Movies & Series"
-                      )
-
-                  elif "music" in cats:
-
-                      group = (
-                          "English | Music"
-                      )
-
-                  elif "sports" in cats:
-
-                      group = (
-                          "English | Sports"
-                      )
-
-                  elif "family" in cats:
-
-                      group = (
-                          "English | Family"
-                      )
-
-                  else:
-
-                      group = (
-                          "English | Entertainment"
-                      )
-
-                  count_english += 1
-
-              # ------------------------------------------------
-              # METADATA
-              # ------------------------------------------------
-
-              tvg_id = channel.get(
-                  "id",
-                  ""
-              )
-
-              logo = channel.get(
-                  "logo",
-                  ""
+              attrs.append(
+                  f'group-title="{group}"'
               )
 
               extinf = (
-                  '#EXTINF:-1'
-                  f' tvg-id="{tvg_id}"'
-                  f' tvg-name="{name}"'
-                  f' group-title="{group}"'
+                  '#EXTINF:-1 '
+                  + " ".join(attrs)
+                  + ","
+                  + name
               )
 
-              if logo:
+              lines = [extinf]
 
-                  extinf += (
-                      f' tvg-logo="{logo}"'
+              if referrer:
+                  lines.append(
+                      "#EXTVLCOPT:http-referrer="
+                      + str(referrer)
                   )
 
-              extinf += (
-                  f',{name}'
+              if user_agent:
+                  lines.append(
+                      "#EXTVLCOPT:http-user-agent="
+                      + str(user_agent)
+                  )
+
+              lines.append(url)
+
+              output_entries.append(
+                  "\n".join(lines)
               )
 
-              output.append(
-                  extinf
+              counts[country_group] += 1
+
+          # ============================================================
+          # JAPAN
+          # ============================================================
+          # Use streams/jp.m3u because the public country playlist
+          # contains fewer channels.
+          # Deduplicate by tvg-id/name.
+          # Prefer first valid occurrence in repository order.
+          # ============================================================
+
+          print("Building Japan...")
+
+          try:
+              jp_text = download(JAPAN_STREAMS_URL)
+
+              lines = jp_text.splitlines()
+
+              current_info = None
+              current_referrer = None
+              current_ua = None
+
+              for raw in lines:
+                  line = raw.strip()
+
+                  if not line:
+                      continue
+
+                  if line.startswith("#EXTINF:"):
+                      current_info = line
+                      current_referrer = None
+                      current_ua = None
+                      continue
+
+                  if line.startswith("#EXTVLCOPT:http-referrer="):
+                      current_referrer = line.split("=", 1)[1]
+                      continue
+
+                  if line.startswith("#EXTVLCOPT:http-user-agent="):
+                      current_ua = line.split("=", 1)[1]
+                      continue
+
+                  if line.startswith("#"):
+                      continue
+
+                  if not current_info:
+                      continue
+
+                  url = line
+
+                  if not (
+                      url.startswith("http://")
+                      or url.startswith("https://")
+                  ):
+                      current_info = None
+                      continue
+
+                  # Get tvg-id
+                  m_id = re.search(
+                      r'tvg-id="([^"]*)"',
+                      current_info
+                  )
+
+                  tvg_id = (
+                      m_id.group(1).strip()
+                      if m_id
+                      else ""
+                  )
+
+                  # Name after final comma
+                  if "," in current_info:
+                      name = current_info.split(",", 1)[1].strip()
+                  else:
+                      name = tvg_id or "Japan TV"
+
+                  # Try matching metadata/logo
+                  base_id = tvg_id
+
+                  if "@" in base_id:
+                      base_id = base_id.split("@", 1)[0]
+
+                  logo = (
+                      logo_map.get(tvg_id)
+                      or logo_map.get(base_id)
+                      or ""
+                  )
+
+                  add_entry(
+                      name=name,
+                      url=url,
+                      group="Japan",
+                      country_group="Japan",
+                      tvg_id=tvg_id,
+                      logo=logo,
+                      referrer=current_referrer,
+                      user_agent=current_ua
+                  )
+
+                  current_info = None
+                  current_referrer = None
+                  current_ua = None
+
+          except Exception as e:
+              print("Japan internal playlist warning:", e)
+
+          # ------------------------------------------------------------
+          # JAPAN FALLBACK
+          # If internal playlist ever fails, use API data.
+          # ------------------------------------------------------------
+
+          if counts["Japan"] == 0:
+              print("Japan fallback to API...")
+
+              for cid, c in channel_by_id.items():
+
+                  if (c.get("country") or "").upper() != "JP":
+                      continue
+
+                  s = best_stream.get(cid)
+
+                  if not s:
+                      continue
+
+                  add_entry(
+                      name=c.get("name") or s.get("title") or cid,
+                      url=s.get("url"),
+                      group="Japan",
+                      country_group="Japan",
+                      tvg_id=cid,
+                      logo=logo_map.get(cid, ""),
+                      referrer=s.get("referrer"),
+                      user_agent=s.get("user_agent")
+                  )
+
+          # ============================================================
+          # VIETNAM
+          # ============================================================
+          # Include Vietnamese-language channels.
+          # Do not restrict sports/music/etc.
+          # ============================================================
+
+          print("Building Vietnam...")
+
+          for cid, c in channel_by_id.items():
+
+              languages = channel_languages.get(cid, set())
+
+              country = (
+                  c.get("country")
+                  or ""
+              ).upper()
+
+              is_vietnamese = (
+                  "vie" in languages
+                  or country == "VN"
               )
 
-              output.append(
-                  stream_url
+              if not is_vietnamese:
+                  continue
+
+              if c.get("is_nsfw"):
+                  continue
+
+              s = best_stream.get(cid)
+
+              if not s:
+                  continue
+
+              add_entry(
+                  name=c.get("name") or s.get("title") or cid,
+                  url=s.get("url"),
+                  group="Vietnam",
+                  country_group="Vietnam",
+                  tvg_id=cid,
+                  logo=logo_map.get(cid, ""),
+                  referrer=s.get("referrer"),
+                  user_agent=s.get("user_agent")
               )
 
-          # ========================================================
+          # ============================================================
+          # ENGLISH
+          # ============================================================
+
+          print("Building English...")
+
+          def english_group(categories):
+              cats = set(categories)
+
+              if cats & {"animation", "children", "kids"}:
+                  return "English | Kids"
+
+              if "education" in cats or "science" in cats:
+                  return "English | Education"
+
+              if "documentary" in cats:
+                  return "English | Documentary"
+
+              if cats & {"movies", "series"}:
+                  return "English | Movies & Series"
+
+              if "music" in cats:
+                  return "English | Music"
+
+              if "sports" in cats:
+                  return "English | Sports"
+
+              if "family" in cats:
+                  return "English | Family"
+
+              return "English | Entertainment"
+
+          for cid, c in channel_by_id.items():
+
+              languages = channel_languages.get(cid, set())
+
+              if "eng" not in languages:
+                  continue
+
+              if c.get("is_nsfw"):
+                  continue
+
+              categories = {
+                  str(x).lower()
+                  for x in (c.get("categories") or [])
+              }
+
+              if categories & BLOCKED_CATEGORIES:
+                  continue
+
+              allowed = categories & ENGLISH_CATEGORIES
+
+              if not allowed:
+                  continue
+
+              country = (
+                  c.get("country")
+                  or ""
+              ).upper()
+
+              # Entertainment/movies/music/sports/series:
+              # restrict mainly to major English-speaking countries.
+              #
+              # Learning/kids/science/documentary/family:
+              # allow English channels internationally.
+              if not (categories & LEARNING_CATEGORIES):
+                  if country not in ENGLISH_COUNTRIES:
+                      continue
+
+              s = best_stream.get(cid)
+
+              if not s:
+                  continue
+
+              group = english_group(categories)
+
+              add_entry(
+                  name=c.get("name") or s.get("title") or cid,
+                  url=s.get("url"),
+                  group=group,
+                  country_group="English",
+                  tvg_id=cid,
+                  logo=logo_map.get(cid, ""),
+                  referrer=s.get("referrer"),
+                  user_agent=s.get("user_agent")
+              )
+
+          # ============================================================
           # WRITE PLAYLIST
-          # ========================================================
+          # ============================================================
 
-          with open(
-              "jp-vn.m3u",
-              "w",
-              encoding="utf-8"
-          ) as file:
-
-              file.write(
-                  "\n".join(output)
-              )
-
-              file.write("\n")
-
-          total = (
-              count_japan
-              + count_vietnam
-              + count_english
+          header = (
+              '#EXTM3U '
+              'x-tvg-url="https://iptv-org.github.io/epg/guides/en.xml,'
+              'https://iptv-org.github.io/epg/guides/ja.xml,'
+              'https://iptv-org.github.io/epg/guides/vi.xml"'
           )
 
-          print("")
-          print("========================================")
-          print("PLAYLIST CREATED SUCCESSFULLY")
-          print("========================================")
-          print("Japan    :", count_japan)
-          print("Vietnam  :", count_vietnam)
-          print("English  :", count_english)
-          print("----------------------------------------")
-          print("TOTAL    :", total)
-          print("========================================")
+          with open(
+              OUTPUT,
+              "w",
+              encoding="utf-8",
+              newline="\n"
+          ) as f:
 
-          if total == 0:
+              f.write(header + "\n")
+
+              for entry in output_entries:
+                  f.write(entry + "\n")
+
+          print("")
+          print("==============================")
+          print("PLAYLIST CREATED")
+          print("==============================")
+          print("Japan   :", counts["Japan"])
+          print("Vietnam :", counts["Vietnam"])
+          print("English :", counts["English"])
+          print("TOTAL   :", sum(counts.values()))
+          print("==============================")
+
+          if sum(counts.values()) < 50:
               raise RuntimeError(
-                  "Playlist contains 0 channels."
+                  "Playlist unexpectedly too small. "
+                  "Stopping to protect existing playlist."
               )
 
           PY
 
-      - name: Check playlist
+      - name: Verify playlist
+        shell: bash
         run: |
-          echo "Checking playlist..."
+          echo "Checking jp-vn.m3u..."
 
           if [ ! -s jp-vn.m3u ]; then
             echo "ERROR: jp-vn.m3u is empty."
             exit 1
           fi
 
-          CHANNEL_COUNT=$(grep -c "^#EXTINF" jp-vn.m3u || true)
+          CHANNELS=$(grep -c '^#EXTINF' jp-vn.m3u || true)
 
-          echo "Playlist channel count: $CHANNEL_COUNT"
+          echo "Channels in playlist: $CHANNELS"
 
-          if [ "$CHANNEL_COUNT" -eq 0 ]; then
-            echo "ERROR: No channels found."
+          if [ "$CHANNELS" -lt 50 ]; then
+            echo "ERROR: Playlist contains too few channels."
             exit 1
           fi
 
-          echo "Playlist check OK."
+          echo "Playlist OK."
 
-      - name: Commit playlist
+      - name: Commit updated playlist
+        shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
