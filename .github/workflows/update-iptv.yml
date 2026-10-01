@@ -1,4 +1,4 @@
-name: Update JP-VN-English IPTV Playlist
+name: Update Stable JP-VN-English IPTV
 
 on:
   workflow_dispatch:
@@ -18,265 +18,848 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download and build playlist
+      - name: Build stable playlist
         shell: bash
         run: |
           python3 <<'PY'
           import urllib.request
           import re
-
-          SOURCES = {
-              "Japan": "https://raw.githubusercontent.com/cherryand1112-creator/IPTV-JP/main/JP.m3u",
-              "Vietnam": "https://iptv-org.github.io/iptv/countries/vn.m3u",
-              "English": "https://iptv-org.github.io/iptv/languages/eng.m3u"
-          }
+          import sys
 
           OUTPUT = "jp-vn.m3u"
 
+          # ============================================================
+          # SOURCES
+          # ============================================================
+
+          JAPAN_URL = (
+              "https://raw.githubusercontent.com/"
+              "cherryand1112-creator/IPTV-JP/main/JP.m3u"
+          )
+
+          VIETNAM_URL = (
+              "https://raw.githubusercontent.com/"
+              "ZXArkin/my-personal-iptv/iptv-radio/ZXIPTV.m3u"
+          )
+
+          ENGLISH_URL = (
+              "https://iptv-org.github.io/iptv/languages/eng.m3u"
+          )
+
+          # ============================================================
+          # DOWNLOAD
+          # ============================================================
+
           def download(url):
+              print("Downloading:")
+              print(url)
+
               req = urllib.request.Request(
                   url,
                   headers={
                       "User-Agent": "Mozilla/5.0"
                   }
               )
-              with urllib.request.urlopen(req, timeout=60) as r:
-                  return r.read().decode("utf-8", errors="replace")
+
+              with urllib.request.urlopen(
+                  req,
+                  timeout=60
+              ) as response:
+
+                  data = response.read()
+
+              if not data:
+                  raise RuntimeError(
+                      "Downloaded file is empty"
+                  )
+
+              return data.decode(
+                  "utf-8",
+                  errors="replace"
+              )
+
+          # ============================================================
+          # M3U PARSER
+          # ============================================================
 
           def parse_m3u(text):
               lines = text.splitlines()
+
               entries = []
 
-              current = None
+              current_extinf = None
+              options = []
 
-              for line in lines:
-                  line = line.strip()
+              for raw in lines:
+
+                  line = raw.strip()
 
                   if not line:
                       continue
 
                   if line.startswith("#EXTINF:"):
-                      current = line
+
+                      current_extinf = line
+                      options = []
+
+                      continue
+
+                  if line.startswith("#EXTVLCOPT:"):
+
+                      options.append(line)
+
                       continue
 
                   if line.startswith("#"):
+
                       continue
 
-                  if current and (
-                      line.startswith("http://")
-                      or line.startswith("https://")
+                  if (
+                      current_extinf
+                      and (
+                          line.startswith("http://")
+                          or line.startswith("https://")
+                      )
                   ):
-                      entries.append((current, line))
-                      current = None
+
+                      entries.append(
+                          (
+                              current_extinf,
+                              options[:],
+                              line
+                          )
+                      )
+
+                      current_extinf = None
+                      options = []
 
               return entries
 
-          # ------------------------------------------------------------
-          # FILTER ENGLISH
-          # ------------------------------------------------------------
+          # ============================================================
+          # NAME
+          # ============================================================
 
-          ALLOWED_GROUPS = {
-              "Animation",
-              "Children",
-              "Kids",
-              "Education",
-              "Entertainment",
-              "Family",
-              "Movies",
-              "Music",
-              "Science",
-              "Series",
-              "Sports",
-              "Documentary"
-          }
+          def get_name(extinf):
 
-          BLOCKED_GROUPS = {
-              "Adult",
-              "Religious",
-              "Shopping",
-              "Weather",
-              "Business",
-              "Legislative"
-          }
+              if "," in extinf:
 
-          def english_allowed(extinf):
-              lower = extinf.lower()
+                  return (
+                      extinf.split(",", 1)[1]
+                      .strip()
+                  )
 
-              # Remove unwanted categories
-              for group in BLOCKED_GROUPS:
-                  if f'group-title="{group.lower()}"' in lower:
-                      return False
+              return "Unknown"
 
-              # Find group title
+          # ============================================================
+          # GROUP
+          # ============================================================
+
+          def get_group(extinf):
+
               m = re.search(
-                  r'group-title="([^"]+)"',
+                  r'group-title="([^"]*)"',
                   extinf,
                   re.I
               )
 
-              if not m:
-                  # If there is no group-title, keep it only when
-                  # the entry clearly belongs to English TV.
-                  return True
+              if m:
+                  return m.group(1).strip()
 
-              group = m.group(1).strip().lower()
+              return ""
 
-              allowed = {
-                  x.lower()
-                  for x in ALLOWED_GROUPS
-              }
+          # ============================================================
+          # TVG ID
+          # ============================================================
 
-              return group in allowed
+          def get_tvg_id(extinf):
 
-          # ------------------------------------------------------------
-          # BUILD
-          # ------------------------------------------------------------
+              m = re.search(
+                  r'tvg-id="([^"]*)"',
+                  extinf,
+                  re.I
+              )
 
-          all_entries = []
+              if m:
+                  return m.group(1).strip()
 
-          # Keep duplicate control separately for each source.
+              return ""
+
+          # ============================================================
+          # REPLACE GROUP
+          # ============================================================
+
+          def set_group(extinf, group):
+
+              if re.search(
+                  r'group-title="[^"]*"',
+                  extinf,
+                  re.I
+              ):
+
+                  return re.sub(
+                      r'group-title="[^"]*"',
+                      'group-title="' + group + '"',
+                      extinf,
+                      count=1,
+                      flags=re.I
+                  )
+
+              return extinf.replace(
+                  "#EXTINF:-1",
+                  '#EXTINF:-1 group-title="' + group + '"',
+                  1
+              )
+
+          # ============================================================
+          # NORMALIZE NAME
+          # ============================================================
+
+          def normalize_name(name):
+
+              name = re.sub(
+                  r'\s*\(\d{3,4}p\)',
+                  "",
+                  name,
+                  flags=re.I
+              )
+
+              name = re.sub(
+                  r'\s+',
+                  " ",
+                  name
+              )
+
+              return name.strip().lower()
+
+          # ============================================================
+          # LOAD SOURCES
+          # ============================================================
+
+          print("")
+          print("================================")
+          print("DOWNLOADING SOURCES")
+          print("================================")
+
+          try:
+              jp_text = download(JAPAN_URL)
+          except Exception as e:
+              print("ERROR Japan:", e)
+              sys.exit(1)
+
+          try:
+              vn_text = download(VIETNAM_URL)
+          except Exception as e:
+              print("ERROR Vietnam:", e)
+              sys.exit(1)
+
+          try:
+              en_text = download(ENGLISH_URL)
+          except Exception as e:
+              print("ERROR English:", e)
+              sys.exit(1)
+
+          # ============================================================
+          # PARSE
+          # ============================================================
+
+          jp_entries = parse_m3u(jp_text)
+          vn_entries = parse_m3u(vn_text)
+          en_entries = parse_m3u(en_text)
+
+          print("")
+          print("Raw Japan   :", len(jp_entries))
+          print("Raw Vietnam :", len(vn_entries))
+          print("Raw English :", len(en_entries))
+
+          # ============================================================
+          # OUTPUT
+          # ============================================================
+
+          result = []
+
           seen_japan = set()
           seen_vietnam = set()
           seen_english = set()
 
-          # ------------------------------------------------------------
+          # ============================================================
           # JAPAN
-          # Direct source that worked yesterday
-          # ------------------------------------------------------------
+          #
+          # Direct JP.m3u.
+          # No streams.json replacement.
+          # No URL rewriting.
+          # ============================================================
 
-          print("Downloading Japan...")
+          for extinf, options, url in jp_entries:
 
-          jp_entries = parse_m3u(
-              download(SOURCES["Japan"])
-          )
+              name = get_name(extinf)
+              tvg_id = get_tvg_id(extinf)
 
-          for extinf, url in jp_entries:
+              key = (
+                  tvg_id
+                  or normalize_name(name)
+              )
 
-              key = extinf + "\n" + url
+              if not key:
+                  continue
 
               if key in seen_japan:
                   continue
 
               seen_japan.add(key)
 
-              # Force group
-              extinf = re.sub(
-                  r'group-title="[^"]*"',
-                  'group-title="Japan"',
+              extinf = set_group(
                   extinf,
-                  count=1,
-                  flags=re.I
+                  "Japan"
               )
 
-              if 'group-title=' not in extinf.lower():
-                  extinf = extinf.replace(
-                      "#EXTINF:-1",
-                      '#EXTINF:-1 group-title="Japan"',
-                      1
+              result.append(
+                  (
+                      "Japan",
+                      extinf,
+                      options,
+                      url
                   )
-
-              all_entries.append(
-                  ("Japan", extinf, url)
               )
 
-          # ------------------------------------------------------------
+          # ============================================================
           # VIETNAM
-          # Direct public country playlist
-          # ------------------------------------------------------------
+          #
+          # Take Vietnamese entries from ZXIPTV.
+          #
+          # Detection:
+          # - .vn tvg-id
+          # - Vietnam group
+          # - Vietnamese channel names
+          # - common VTV/HTV/VTC/THVL names
+          # ============================================================
 
-          print("Downloading Vietnam...")
+          vietnam_keywords = [
+              "vtv",
+              "htv",
+              "htvc",
+              "vtc",
+              "thvl",
+              "truyen hinh",
+              "truyền hình",
+              "hanoi",
+              "hà nội",
+              "hcm",
+              "tphcm",
+              "ho chi minh",
+              "ho chi minh city",
+              "da nang",
+              "đà nẵng",
+              "hai phong",
+              "hải phòng",
+              "can tho",
+              "cần thơ",
+              "binh duong",
+              "bình dương",
+              "dong nai",
+              "đồng nai",
+              "quang ninh",
+              "quảng ninh",
+              "khanh hoa",
+              "khánh hòa",
+              "dak lak",
+              "đắk lắk",
+              "lam dong",
+              "lâm đồng",
+              "tay ninh",
+              "tây ninh",
+              "vinh long",
+              "vĩnh long",
+              "bac lieu",
+              "bạc liêu",
+              "ca mau",
+              "cà mau",
+              "kien giang",
+              "kiên giang",
+              "an giang",
+              "đồng tháp",
+              "dong thap",
+              "tien giang",
+              "tiền giang",
+              "long an",
+              "ben tre",
+              "bến tre",
+              "tra vinh",
+              "trà vinh",
+              "soc trang",
+              "sóc trăng",
+              "hau giang",
+              "hậu giang",
+              "binh phuoc",
+              "bình phước",
+              "binh thuan",
+              "bình thuận",
+              "ninh thuan",
+              "ninh thuận",
+              "phu yen",
+              "phú yên",
+              "gia lai",
+              "kon tum",
+              "dak nong",
+              "đắk nông",
+              "thanh hoa",
+              "thanh hóa",
+              "nghe an",
+              "nghệ an",
+              "ha tinh",
+              "hà tĩnh",
+              "quang binh",
+              "quảng bình",
+              "quang tri",
+              "quảng trị",
+              "thua thien",
+              "huế",
+              "hue",
+              "quang nam",
+              "quảng nam",
+              "quang ngai",
+              "quảng ngãi",
+              "binh dinh",
+              "bình định",
+              "phu tho",
+              "phú thọ",
+              "thai nguyen",
+              "thái nguyên",
+              "bac ninh",
+              "bắc ninh",
+              "bac giang",
+              "bắc giang",
+              "hai duong",
+              "hải dương",
+              "hung yen",
+              "hưng yên",
+              "nam dinh",
+              "nam định",
+              "ninh binh",
+              "ninh bình",
+              "thai binh",
+              "thái bình",
+              "lao cai",
+              "lào cai",
+              "yen bai",
+              "yên bái",
+              "son la",
+              "sơn la",
+              "dien bien",
+              "điện biên",
+              "lai chau",
+              "lai châu",
+              "lang son",
+              "lạng sơn",
+              "cao bang",
+              "cao bằng",
+              "bac kan",
+              "bắc kạn",
+              "tuyen quang",
+              "tuyên quang",
+              "ha giang",
+              "hà giang"
+          ]
 
-          vn_entries = parse_m3u(
-              download(SOURCES["Vietnam"])
-          )
+          for extinf, options, url in vn_entries:
 
-          for extinf, url in vn_entries:
+              name = get_name(extinf)
+              tvg_id = get_tvg_id(extinf)
+              group = get_group(extinf)
 
-              key = extinf + "\n" + url
+              combined = (
+                  (
+                      name
+                      + " "
+                      + tvg_id
+                      + " "
+                      + group
+                  )
+                  .lower()
+              )
+
+              is_vietnam = False
+
+              if tvg_id.lower().endswith(".vn"):
+                  is_vietnam = True
+
+              if (
+                  "vietnam" in group.lower()
+                  or "việt nam" in group.lower()
+              ):
+                  is_vietnam = True
+
+              for keyword in vietnam_keywords:
+
+                  if keyword in combined:
+
+                      is_vietnam = True
+                      break
+
+              if not is_vietnam:
+                  continue
+
+              # Skip obvious radio/audio entries
+              if any(
+                  x in combined
+                  for x in [
+                      "radio",
+                      "fm ",
+                      "am ",
+                      "podcast"
+                  ]
+              ):
+                  continue
+
+              key = (
+                  tvg_id
+                  or normalize_name(name)
+              )
+
+              if not key:
+                  continue
 
               if key in seen_vietnam:
                   continue
 
               seen_vietnam.add(key)
 
-              extinf = re.sub(
-                  r'group-title="[^"]*"',
-                  'group-title="Vietnam"',
+              extinf = set_group(
                   extinf,
-                  count=1,
-                  flags=re.I
+                  "Vietnam"
               )
 
-              if 'group-title=' not in extinf.lower():
-                  extinf = extinf.replace(
-                      "#EXTINF:-1",
-                      '#EXTINF:-1 group-title="Vietnam"',
-                      1
+              result.append(
+                  (
+                      "Vietnam",
+                      extinf,
+                      options,
+                      url
                   )
-
-              all_entries.append(
-                  ("Vietnam", extinf, url)
               )
 
-          # ------------------------------------------------------------
+          # ============================================================
           # ENGLISH
-          # Use public language playlist directly.
-          # Do NOT select individual streams through streams.json.
-          # ------------------------------------------------------------
+          #
+          # Keep only requested categories.
+          # No Pluto TV.
+          # No non-English language expansion.
+          # ============================================================
 
-          print("Downloading English...")
+          wanted_categories = {
+              "animation",
+              "children",
+              "kids",
+              "education",
+              "entertainment",
+              "family",
+              "movies",
+              "music",
+              "science",
+              "series",
+              "sports",
+              "documentary"
+          }
 
-          en_entries = parse_m3u(
-              download(SOURCES["English"])
-          )
+          blocked_categories = {
+              "adult",
+              "xxx",
+              "religious",
+              "shopping",
+              "shop",
+              "weather",
+              "business",
+              "legislative",
+              "gambling"
+          }
 
-          for extinf, url in en_entries:
+          english_country_codes = {
+              "us",
+              "gb",
+              "ca",
+              "au",
+              "nz",
+              "ie"
+          }
 
-              if not english_allowed(extinf):
+          learning_categories = {
+              "animation",
+              "children",
+              "kids",
+              "education",
+              "family",
+              "science",
+              "documentary"
+          }
+
+          for extinf, options, url in en_entries:
+
+              name = get_name(extinf)
+              tvg_id = get_tvg_id(extinf)
+              group = get_group(extinf)
+
+              low = (
+                  extinf
+                  + " "
+                  + name
+                  + " "
+                  + group
+              ).lower()
+
+              # Remove Pluto TV completely
+              if "pluto" in low:
                   continue
 
-              key = extinf + "\n" + url
+              # Remove unwanted categories
+              blocked = False
+
+              for cat in blocked_categories:
+
+                  if cat in group.lower():
+
+                      blocked = True
+                      break
+
+              if blocked:
+                  continue
+
+              # Find requested category
+              category = None
+
+              for cat in wanted_categories:
+
+                  if cat in group.lower():
+
+                      category = cat
+                      break
+
+              if category is None:
+
+                  # Some public entries don't have useful group-title.
+                  # Keep only obvious major English entertainment
+                  # channels from the six main English-speaking markets.
+                  category = "entertainment"
+
+              # --------------------------------------------------------
+              # Country extraction
+              # --------------------------------------------------------
+
+              country_ok = False
+
+              # tvg-id often ends with .us / .gb / etc.
+              m = re.search(
+                  r'\.([a-z]{2})(?:@[^"]*)?$',
+                  tvg_id.lower()
+              )
+
+              if m:
+
+                  if m.group(1) in english_country_codes:
+                      country_ok = True
+
+              # Search common country markers
+              for code in english_country_codes:
+
+                  if (
+                      "." + code
+                      in tvg_id.lower()
+                  ):
+
+                      country_ok = True
+                      break
+
+              # Learning/documentary/science/family can be international.
+              if category not in learning_categories:
+
+                  if not country_ok:
+
+                      # Look at explicit country attribute if present.
+                      country_match = re.search(
+                          r'(?:tvg-country|country)="([^"]*)"',
+                          extinf,
+                          re.I
+                      )
+
+                      if country_match:
+
+                          countries = (
+                              country_match
+                              .group(1)
+                              .lower()
+                          )
+
+                          if any(
+                              x in countries
+                              for x in [
+                                  "us",
+                                  "gb",
+                                  "ca",
+                                  "au",
+                                  "nz",
+                                  "ie"
+                              ]
+                          ):
+
+                              country_ok = True
+
+                  if not country_ok:
+                      continue
+
+              # --------------------------------------------------------
+              # Dedupe
+              # --------------------------------------------------------
+
+              key = (
+                  tvg_id
+                  or normalize_name(name)
+              )
+
+              if not key:
+                  continue
 
               if key in seen_english:
                   continue
 
               seen_english.add(key)
 
-              # Keep original group-title where available.
-              # If missing, place into English | Entertainment.
-              m = re.search(
-                  r'group-title="([^"]+)"',
-                  extinf,
-                  re.I
-              )
+              # --------------------------------------------------------
+              # Friendly group names
+              # --------------------------------------------------------
 
-              if m:
-                  original_group = m.group(1).strip()
+              if category in {
+                  "children",
+                  "kids",
+                  "animation"
+              }:
 
-                  extinf = re.sub(
-                      r'group-title="[^"]*"',
-                      'group-title="English | '
-                      + original_group
-                      + '"',
-                      extinf,
-                      count=1,
-                      flags=re.I
-                  )
+                  final_group = "English | Kids"
+
+              elif category in {
+                  "education",
+                  "science"
+              }:
+
+                  final_group = "English | Education"
+
+              elif category == "documentary":
+
+                  final_group = "English | Documentary"
+
+              elif category in {
+                  "movies",
+                  "series"
+              }:
+
+                  final_group = "English | Movies & Series"
+
+              elif category == "music":
+
+                  final_group = "English | Music"
+
+              elif category == "sports":
+
+                  final_group = "English | Sports"
+
+              elif category == "family":
+
+                  final_group = "English | Family"
 
               else:
-                  extinf = extinf.replace(
-                      "#EXTINF:-1",
-                      '#EXTINF:-1 group-title="English | Entertainment"',
-                      1
-                  )
 
-              all_entries.append(
-                  ("English", extinf, url)
+                  final_group = "English | Entertainment"
+
+              extinf = set_group(
+                  extinf,
+                  final_group
               )
 
-          # ------------------------------------------------------------
+              result.append(
+                  (
+                      "English",
+                      extinf,
+                      options,
+                      url
+                  )
+              )
+
+          # ============================================================
+          # ORDER
+          # ============================================================
+
+          order = {
+              "Japan": 1,
+              "Vietnam": 2,
+              "English": 3
+          }
+
+          result.sort(
+              key=lambda x: order.get(x[0], 99)
+          )
+
+          # ============================================================
+          # COUNTS
+          # ============================================================
+
+          japan_count = sum(
+              1 for x in result
+              if x[0] == "Japan"
+          )
+
+          vietnam_count = sum(
+              1 for x in result
+              if x[0] == "Vietnam"
+          )
+
+          english_count = sum(
+              1 for x in result
+              if x[0] == "English"
+          )
+
+          total = len(result)
+
+          print("")
+          print("================================")
+          print("FINAL PLAYLIST")
+          print("================================")
+          print("Japan   :", japan_count)
+          print("Vietnam :", vietnam_count)
+          print("English :", english_count)
+          print("TOTAL   :", total)
+          print("================================")
+
+          # ============================================================
+          # SAFETY CHECK
+          #
+          # Never replace an existing working playlist if source data
+          # suddenly disappears.
+          # ============================================================
+
+          if japan_count < 30:
+              raise RuntimeError(
+                  "Japan count unexpectedly low. "
+                  "Existing playlist will be preserved."
+              )
+
+          if vietnam_count < 30:
+              raise RuntimeError(
+                  "Vietnam count unexpectedly low. "
+                  "Existing playlist will be preserved."
+              )
+
+          if english_count < 50:
+              raise RuntimeError(
+                  "English count unexpectedly low. "
+                  "Existing playlist will be preserved."
+              )
+
+          if total < 150:
+              raise RuntimeError(
+                  "Total playlist unexpectedly low. "
+                  "Existing playlist will be preserved."
+              )
+
+          # ============================================================
           # WRITE
-          # ------------------------------------------------------------
+          # ============================================================
 
           header = (
               '#EXTM3U '
@@ -295,60 +878,45 @@ jobs:
 
               f.write(header + "\n")
 
-              for _, extinf, url in all_entries:
-                  f.write(extinf + "\n")
-                  f.write(url + "\n")
+              for source, extinf, options, url in result:
 
-          japan = sum(
-              1 for x in all_entries
-              if x[0] == "Japan"
-          )
+                  f.write(
+                      extinf
+                      + "\n"
+                  )
 
-          vietnam = sum(
-              1 for x in all_entries
-              if x[0] == "Vietnam"
-          )
+                  for option in options:
 
-          english = sum(
-              1 for x in all_entries
-              if x[0] == "English"
-          )
+                      f.write(
+                          option
+                          + "\n"
+                      )
 
-          total = len(all_entries)
+                  f.write(
+                      url
+                      + "\n"
+                  )
 
           print("")
-          print("==============================")
-          print("PLAYLIST CREATED")
-          print("==============================")
-          print("Japan   :", japan)
-          print("Vietnam :", vietnam)
-          print("English :", english)
-          print("TOTAL   :", total)
-          print("==============================")
-
-          if total < 50:
-              raise RuntimeError(
-                  "Playlist too small. Existing playlist will not be replaced."
-              )
+          print("Playlist written successfully.")
 
           PY
 
       - name: Verify playlist
         shell: bash
         run: |
-          echo "Checking playlist..."
+          echo "================================"
+          echo "VERIFY"
+          echo "================================"
 
-          if [ ! -s jp-vn.m3u ]; then
-            echo "ERROR: jp-vn.m3u is empty."
-            exit 1
-          fi
+          test -s jp-vn.m3u
 
           COUNT=$(grep -c '^#EXTINF' jp-vn.m3u || true)
 
-          echo "Total channels: $COUNT"
+          echo "Channels: $COUNT"
 
-          if [ "$COUNT" -lt 50 ]; then
-            echo "ERROR: Too few channels."
+          if [ "$COUNT" -lt 150 ]; then
+            echo "ERROR: Playlist too small."
             exit 1
           fi
 
@@ -363,402 +931,11 @@ jobs:
           git add jp-vn.m3u
 
           if git diff --cached --quiet; then
-            echo "No changes."
+            echo "No playlist changes."
             exit 0
           fi
 
-          git commit -m "Update IPTV playlist"
-
-          git pull --rebase origin main
-
-          git push origin main
-              used_keys.add(dedupe_key)
-
-              attrs = []
-
-              if tvg_id:
-                  attrs.append(
-                      f'tvg-id="{tvg_id}"'
-                  )
-
-              if logo:
-                  attrs.append(
-                      f'tvg-logo="{logo}"'
-                  )
-
-              attrs.append(
-                  f'group-title="{group}"'
-              )
-
-              extinf = (
-                  '#EXTINF:-1 '
-                  + " ".join(attrs)
-                  + ","
-                  + name
-              )
-
-              lines = [extinf]
-
-              if referrer:
-                  lines.append(
-                      "#EXTVLCOPT:http-referrer="
-                      + str(referrer)
-                  )
-
-              if user_agent:
-                  lines.append(
-                      "#EXTVLCOPT:http-user-agent="
-                      + str(user_agent)
-                  )
-
-              lines.append(url)
-
-              output_entries.append(
-                  "\n".join(lines)
-              )
-
-              counts[country_group] += 1
-
-          # ============================================================
-          # JAPAN
-          # ============================================================
-          # Use streams/jp.m3u because the public country playlist
-          # contains fewer channels.
-          # Deduplicate by tvg-id/name.
-          # Prefer first valid occurrence in repository order.
-          # ============================================================
-
-          print("Building Japan...")
-
-          try:
-              jp_text = download(JAPAN_STREAMS_URL)
-
-              lines = jp_text.splitlines()
-
-              current_info = None
-              current_referrer = None
-              current_ua = None
-
-              for raw in lines:
-                  line = raw.strip()
-
-                  if not line:
-                      continue
-
-                  if line.startswith("#EXTINF:"):
-                      current_info = line
-                      current_referrer = None
-                      current_ua = None
-                      continue
-
-                  if line.startswith("#EXTVLCOPT:http-referrer="):
-                      current_referrer = line.split("=", 1)[1]
-                      continue
-
-                  if line.startswith("#EXTVLCOPT:http-user-agent="):
-                      current_ua = line.split("=", 1)[1]
-                      continue
-
-                  if line.startswith("#"):
-                      continue
-
-                  if not current_info:
-                      continue
-
-                  url = line
-
-                  if not (
-                      url.startswith("http://")
-                      or url.startswith("https://")
-                  ):
-                      current_info = None
-                      continue
-
-                  # Get tvg-id
-                  m_id = re.search(
-                      r'tvg-id="([^"]*)"',
-                      current_info
-                  )
-
-                  tvg_id = (
-                      m_id.group(1).strip()
-                      if m_id
-                      else ""
-                  )
-
-                  # Name after final comma
-                  if "," in current_info:
-                      name = current_info.split(",", 1)[1].strip()
-                  else:
-                      name = tvg_id or "Japan TV"
-
-                  # Try matching metadata/logo
-                  base_id = tvg_id
-
-                  if "@" in base_id:
-                      base_id = base_id.split("@", 1)[0]
-
-                  logo = (
-                      logo_map.get(tvg_id)
-                      or logo_map.get(base_id)
-                      or ""
-                  )
-
-                  add_entry(
-                      name=name,
-                      url=url,
-                      group="Japan",
-                      country_group="Japan",
-                      tvg_id=tvg_id,
-                      logo=logo,
-                      referrer=current_referrer,
-                      user_agent=current_ua
-                  )
-
-                  current_info = None
-                  current_referrer = None
-                  current_ua = None
-
-          except Exception as e:
-              print("Japan internal playlist warning:", e)
-
-          # ------------------------------------------------------------
-          # JAPAN FALLBACK
-          # If internal playlist ever fails, use API data.
-          # ------------------------------------------------------------
-
-          if counts["Japan"] == 0:
-              print("Japan fallback to API...")
-
-              for cid, c in channel_by_id.items():
-
-                  if (c.get("country") or "").upper() != "JP":
-                      continue
-
-                  s = best_stream.get(cid)
-
-                  if not s:
-                      continue
-
-                  add_entry(
-                      name=c.get("name") or s.get("title") or cid,
-                      url=s.get("url"),
-                      group="Japan",
-                      country_group="Japan",
-                      tvg_id=cid,
-                      logo=logo_map.get(cid, ""),
-                      referrer=s.get("referrer"),
-                      user_agent=s.get("user_agent")
-                  )
-
-          # ============================================================
-          # VIETNAM
-          # ============================================================
-          # Include Vietnamese-language channels.
-          # Do not restrict sports/music/etc.
-          # ============================================================
-
-          print("Building Vietnam...")
-
-          for cid, c in channel_by_id.items():
-
-              languages = channel_languages.get(cid, set())
-
-              country = (
-                  c.get("country")
-                  or ""
-              ).upper()
-
-              is_vietnamese = (
-                  "vie" in languages
-                  or country == "VN"
-              )
-
-              if not is_vietnamese:
-                  continue
-
-              if c.get("is_nsfw"):
-                  continue
-
-              s = best_stream.get(cid)
-
-              if not s:
-                  continue
-
-              add_entry(
-                  name=c.get("name") or s.get("title") or cid,
-                  url=s.get("url"),
-                  group="Vietnam",
-                  country_group="Vietnam",
-                  tvg_id=cid,
-                  logo=logo_map.get(cid, ""),
-                  referrer=s.get("referrer"),
-                  user_agent=s.get("user_agent")
-              )
-
-          # ============================================================
-          # ENGLISH
-          # ============================================================
-
-          print("Building English...")
-
-          def english_group(categories):
-              cats = set(categories)
-
-              if cats & {"animation", "children", "kids"}:
-                  return "English | Kids"
-
-              if "education" in cats or "science" in cats:
-                  return "English | Education"
-
-              if "documentary" in cats:
-                  return "English | Documentary"
-
-              if cats & {"movies", "series"}:
-                  return "English | Movies & Series"
-
-              if "music" in cats:
-                  return "English | Music"
-
-              if "sports" in cats:
-                  return "English | Sports"
-
-              if "family" in cats:
-                  return "English | Family"
-
-              return "English | Entertainment"
-
-          for cid, c in channel_by_id.items():
-
-              languages = channel_languages.get(cid, set())
-
-              if "eng" not in languages:
-                  continue
-
-              if c.get("is_nsfw"):
-                  continue
-
-              categories = {
-                  str(x).lower()
-                  for x in (c.get("categories") or [])
-              }
-
-              if categories & BLOCKED_CATEGORIES:
-                  continue
-
-              allowed = categories & ENGLISH_CATEGORIES
-
-              if not allowed:
-                  continue
-
-              country = (
-                  c.get("country")
-                  or ""
-              ).upper()
-
-              # Entertainment/movies/music/sports/series:
-              # restrict mainly to major English-speaking countries.
-              #
-              # Learning/kids/science/documentary/family:
-              # allow English channels internationally.
-              if not (categories & LEARNING_CATEGORIES):
-                  if country not in ENGLISH_COUNTRIES:
-                      continue
-
-              s = best_stream.get(cid)
-
-              if not s:
-                  continue
-
-              group = english_group(categories)
-
-              add_entry(
-                  name=c.get("name") or s.get("title") or cid,
-                  url=s.get("url"),
-                  group=group,
-                  country_group="English",
-                  tvg_id=cid,
-                  logo=logo_map.get(cid, ""),
-                  referrer=s.get("referrer"),
-                  user_agent=s.get("user_agent")
-              )
-
-          # ============================================================
-          # WRITE PLAYLIST
-          # ============================================================
-
-          header = (
-              '#EXTM3U '
-              'x-tvg-url="https://iptv-org.github.io/epg/guides/en.xml,'
-              'https://iptv-org.github.io/epg/guides/ja.xml,'
-              'https://iptv-org.github.io/epg/guides/vi.xml"'
-          )
-
-          with open(
-              OUTPUT,
-              "w",
-              encoding="utf-8",
-              newline="\n"
-          ) as f:
-
-              f.write(header + "\n")
-
-              for entry in output_entries:
-                  f.write(entry + "\n")
-
-          print("")
-          print("==============================")
-          print("PLAYLIST CREATED")
-          print("==============================")
-          print("Japan   :", counts["Japan"])
-          print("Vietnam :", counts["Vietnam"])
-          print("English :", counts["English"])
-          print("TOTAL   :", sum(counts.values()))
-          print("==============================")
-
-          if sum(counts.values()) < 50:
-              raise RuntimeError(
-                  "Playlist unexpectedly too small. "
-                  "Stopping to protect existing playlist."
-              )
-
-          PY
-
-      - name: Verify playlist
-        shell: bash
-        run: |
-          echo "Checking jp-vn.m3u..."
-
-          if [ ! -s jp-vn.m3u ]; then
-            echo "ERROR: jp-vn.m3u is empty."
-            exit 1
-          fi
-
-          CHANNELS=$(grep -c '^#EXTINF' jp-vn.m3u || true)
-
-          echo "Channels in playlist: $CHANNELS"
-
-          if [ "$CHANNELS" -lt 50 ]; then
-            echo "ERROR: Playlist contains too few channels."
-            exit 1
-          fi
-
-          echo "Playlist OK."
-
-      - name: Commit updated playlist
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          git add jp-vn.m3u
-
-          if git diff --cached --quiet; then
-            echo "No changes to commit."
-            exit 0
-          fi
-
-          git commit -m "Update JP-VN IPTV playlist"
+          git commit -m "Update stable JP-VN-English IPTV"
 
           git pull --rebase origin main
 
