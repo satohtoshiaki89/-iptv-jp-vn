@@ -28,10 +28,8 @@ jobs:
         run: |
           cat > generate.py <<'PYTHON'
           import re
-          import html
           import requests
           from pathlib import Path
-          from urllib.parse import urljoin
 
           JAPAN_URL = "https://raw.githubusercontent.com/ZXArkin/my-personal-iptv/iptv-radio/Japan.m3u"
           VIETNAM_URL = "https://raw.githubusercontent.com/ZXArkin/my-personal-iptv/iptv-radio/ZXIPTV.m3u"
@@ -39,29 +37,26 @@ jobs:
 
           OUTPUT = Path("jp-vn.m3u")
 
-          USER_AGENT = (
-              "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-              "AppleWebKit/537.36 (KHTML, like Gecko) "
-              "Chrome/140.0 Safari/537.36"
-          )
-
           session = requests.Session()
           session.headers.update({
-              "User-Agent": USER_AGENT,
-              "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
+              "User-Agent": (
+                  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                  "AppleWebKit/537.36 (KHTML, like Gecko) "
+                  "Chrome/140.0 Safari/537.36"
+              ),
+              "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7"
           })
 
 
           def download(url, timeout=40):
-              response = session.get(url, timeout=timeout)
-              response.raise_for_status()
-              return response.text
+              r = session.get(url, timeout=timeout)
+              r.raise_for_status()
+              return r.text
 
 
           def parse_m3u(text):
               lines = text.splitlines()
-              channels = []
-
+              result = []
               i = 0
 
               while i < len(lines):
@@ -70,7 +65,6 @@ jobs:
                   if line.startswith("#EXTINF:"):
                       info = line
                       url = None
-
                       j = i + 1
 
                       while j < len(lines):
@@ -83,16 +77,16 @@ jobs:
                           j += 1
 
                       if url:
-                          channels.append((info, url))
+                          result.append((info, url))
 
                       i = j
 
                   i += 1
 
-              return channels
+              return result
 
 
-          def force_group(info, group):
+          def set_group(info, group):
               info = re.sub(
                   r'group-title="[^"]*"',
                   'group-title="' + group + '"',
@@ -116,12 +110,13 @@ jobs:
           # ============================================================
 
           print("Downloading Japan...")
+
           japan = parse_m3u(download(JAPAN_URL))
 
           japan_out = []
 
           for info, url in japan:
-              info = force_group(info, "🇯🇵 Japan")
+              info = set_group(info, "🇯🇵 Japan")
               japan_out.append((info, url))
 
           print("Japan:", len(japan_out))
@@ -129,27 +124,28 @@ jobs:
 
           # ============================================================
           # VIETNAM
-          # Keep existing Vietnam channels.
-          # Remove only VTV1-VTV10.
+          # Keep the working Vietnam source.
+          # Remove only VTV channels because they are rebuilt below.
           # ============================================================
 
           print("Downloading Vietnam...")
+
           vietnam = parse_m3u(download(VIETNAM_URL))
 
           vietnam_out = []
 
-          vtv_name_pattern = re.compile(
-              r"\bVTV\s*(?:1|2|3|4|5|6|7|8|9|10)\b",
+          vtv_pattern = re.compile(
+              r'\bVTV\s*(?:1|2|3|4|5|6|7|8|9|10)\b',
               re.IGNORECASE
           )
 
           for info, url in vietnam:
               name = info.split(",")[-1].strip()
 
-              if vtv_name_pattern.search(name):
+              if vtv_pattern.search(name):
                   continue
 
-              info = force_group(info, "🇻🇳 Vietnam")
+              info = set_group(info, "🇻🇳 Vietnam")
               vietnam_out.append((info, url))
 
           print("Vietnam non-VTV:", len(vietnam_out))
@@ -157,107 +153,26 @@ jobs:
 
           # ============================================================
           # VTV
-          # Get fresh HLS URL from xemtv.us
+          # Official VTVGo CDN addresses currently used as primary
+          # fallback by the current VTV backend.
           # ============================================================
 
-          VTV_ENDPOINTS = {
-              "VTV1": "https://xemtv.us/tv/vtv1.php",
-              "VTV2": "https://xemtv.us/tv/vtv2.php",
-              "VTV3": "https://xemtv.us/tv/vtv3.php",
-              "VTV4": "https://xemtv.us/tv/vtv4.php",
-              "VTV5": "https://xemtv.us/tv/vtv5.php",
-              "VTV6": "https://xemtv.us/tv/vtv6.php",
-              "VTV7": "https://xemtv.us/tv/vtv7.php",
-              "VTV8": "https://xemtv.us/tv/vtv8.php",
-              "VTV9": "https://xemtv.us/tv/vtv9.php",
-              "VTV10": "https://xemtv.us/tv/vtv10.php",
+          VTV_URLS = {
+              "VTV1": "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv1-manifest.m3u8",
+              "VTV2": "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv2-manifest.m3u8",
+              "VTV3": "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv3-manifest.m3u8",
+              "VTV4": "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv4-manifest.m3u8",
+              "VTV5": "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv5-manifest.m3u8",
+              "VTV6": "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv6-manifest.m3u8",
+              "VTV7": "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv7-manifest.m3u8",
+              "VTV8": "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv8-manifest.m3u8",
+              "VTV9": "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv9-manifest.m3u8",
+              "VTV10": "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtvct-manifest.m3u8",
           }
-
-          VTV_HEADERS = {
-              "User-Agent": USER_AGENT,
-              "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-              "Referer": "https://xemtv.us/",
-          }
-
-
-          def extract_m3u8(page):
-              page = html.unescape(page)
-              page = page.replace("\\/", "/")
-
-              patterns = [
-                  r'file\s*:\s*["\']([^"\']+\.m3u8[^"\']*)',
-                  r'file\s*=\s*["\']([^"\']+\.m3u8[^"\']*)',
-                  r'source\s*:\s*["\']([^"\']+\.m3u8[^"\']*)',
-                  r'(https?://[^"\'\s<>]+\.m3u8[^"\'\s<>]*)',
-              ]
-
-              for pattern in patterns:
-                  matches = re.findall(
-                      pattern,
-                      page,
-                      flags=re.IGNORECASE
-                  )
-
-                  for url in matches:
-                      url = url.strip()
-
-                      if url.startswith("//"):
-                          url = "https:" + url
-
-                      if url.startswith("/"):
-                          url = urljoin(
-                              "https://xemtv.us/",
-                              url
-                          )
-
-                      if url.startswith("http"):
-                          return url
-
-              return None
-
-
-          def get_vtv_stream(name, endpoint):
-              try:
-                  response = session.get(
-                      endpoint,
-                      headers=VTV_HEADERS,
-                      timeout=20,
-                      allow_redirects=True
-                  )
-
-                  print(
-                      name,
-                      "HTTP",
-                      response.status_code,
-                      "bytes",
-                      len(response.text)
-                  )
-
-                  if response.status_code != 200:
-                      return None
-
-                  stream = extract_m3u8(response.text)
-
-                  if stream:
-                      print(name, "OK:", stream)
-                      return stream
-
-                  print(name, "NO M3U8")
-                  return None
-
-              except Exception as error:
-                  print(name, "ERROR:", error)
-                  return None
-
 
           vtv_out = []
 
-          for name, endpoint in VTV_ENDPOINTS.items():
-              stream = get_vtv_stream(name, endpoint)
-
-              if not stream:
-                  continue
-
+          for name, url in VTV_URLS.items():
               info = (
                   '#EXTINF:-1 '
                   'tvg-id="' + name + '" '
@@ -265,9 +180,9 @@ jobs:
                   + name
               )
 
-              vtv_out.append((info, stream))
+              vtv_out.append((info, url))
 
-          print("VTV dynamic:", len(vtv_out))
+          print("VTV:", len(vtv_out))
 
 
           # ============================================================
@@ -275,6 +190,7 @@ jobs:
           # ============================================================
 
           print("Downloading English...")
+
           english = parse_m3u(download(ENGLISH_URL))
 
           blocked = [
@@ -288,7 +204,7 @@ jobs:
               "business",
               "legislative",
               "gambling",
-              "casino",
+              "casino"
           ]
 
 
@@ -307,9 +223,7 @@ jobs:
               ]):
                   return "🇬🇧 English | Animation"
 
-              if any(x in text for x in [
-                  "family"
-              ]):
+              if "family" in text:
                   return "🇬🇧 English | Family"
 
               if any(x in text for x in [
@@ -379,8 +293,7 @@ jobs:
                   continue
 
               group = english_group(name, info)
-
-              info = force_group(info, group)
+              info = set_group(info, group)
 
               english_out.append((info, url))
 
@@ -389,37 +302,31 @@ jobs:
 
           # ============================================================
           # SAFETY CHECK
-          # Never overwrite a working playlist if sources break.
           # ============================================================
 
           if len(japan_out) < 30:
               raise RuntimeError(
-                  "Japan source broken: only " + str(len(japan_out))
+                  "Japan source failed: " + str(len(japan_out))
               )
 
           if len(vietnam_out) < 50:
               raise RuntimeError(
-                  "Vietnam source broken: only " + str(len(vietnam_out))
+                  "Vietnam source failed: " + str(len(vietnam_out))
               )
 
           if len(english_out) < 500:
               raise RuntimeError(
-                  "English source broken: only " + str(len(english_out))
-              )
-
-          if len(vtv_out) < 6:
-              raise RuntimeError(
-                  "VTV dynamic source returned fewer than 6 channels"
+                  "English source failed: " + str(len(english_out))
               )
 
 
           # ============================================================
-          # BUILD PLAYLIST
+          # BUILD FINAL PLAYLIST
           # ============================================================
 
           output = [
               "#EXTM3U",
-              "# IPTV JP + VN + EN",
+              "# JP + VN + VTV + EN",
               ""
           ]
 
@@ -437,27 +344,25 @@ jobs:
           add_channels(english_out)
 
 
-          playlist = "\n".join(output)
-
           OUTPUT.write_text(
-              playlist,
+              "\n".join(output),
               encoding="utf-8"
           )
 
 
-          print("--------------------------------")
-          print("FINAL RESULT")
-          print("Japan:", len(japan_out))
-          print("Vietnam:", len(vietnam_out))
-          print("VTV:", len(vtv_out))
-          print("English:", len(english_out))
-          print(
-              "TOTAL:",
+          total = (
               len(japan_out)
               + len(vietnam_out)
               + len(vtv_out)
               + len(english_out)
           )
+
+          print("--------------------------------")
+          print("Japan:", len(japan_out))
+          print("Vietnam:", len(vietnam_out))
+          print("VTV:", len(vtv_out))
+          print("English:", len(english_out))
+          print("TOTAL:", total)
           print("--------------------------------")
           PYTHON
 
