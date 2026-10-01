@@ -26,21 +26,15 @@ jobs:
 
           API = "https://iptv-org.github.io/api"
 
-          URL_CHANNELS = f"{API}/channels.json"
-          URL_FEEDS = f"{API}/feeds.json"
-          URL_STREAMS = f"{API}/streams.json"
-
           def get_json(url):
               print("Downloading:", url)
 
-              req = urllib.request.Request(
+              request = urllib.request.Request(
                   url,
-                  headers={
-                      "User-Agent": "Mozilla/5.0"
-                  }
+                  headers={"User-Agent": "Mozilla/5.0"}
               )
 
-              with urllib.request.urlopen(req, timeout=180) as response:
+              with urllib.request.urlopen(request, timeout=180) as response:
                   return json.loads(
                       response.read().decode(
                           "utf-8",
@@ -52,26 +46,23 @@ jobs:
           print("Downloading iptv-org API")
           print("========================================")
 
-          channels = get_json(URL_CHANNELS)
-          feeds = get_json(URL_FEEDS)
-          streams = get_json(URL_STREAMS)
+          channels = get_json(f"{API}/channels.json")
+          feeds = get_json(f"{API}/feeds.json")
+          streams = get_json(f"{API}/streams.json")
 
           print("Channels:", len(channels))
           print("Feeds:", len(feeds))
           print("Streams:", len(streams))
 
           # ========================================================
-          # LANGUAGES
+          # SETTINGS
           # ========================================================
 
           JAPANESE = "jpn"
           VIETNAMESE = "vie"
           ENGLISH = "eng"
 
-          # ========================================================
-          # ENGLISH CATEGORIES WANTED
-          # ========================================================
-
+          # English categories wanted
           ENGLISH_ALLOWED = {
               "animation",
               "children",
@@ -86,27 +77,32 @@ jobs:
               "documentary"
           }
 
-          # Categories we definitely do NOT want
+          # Categories we do not want
           BLOCKED_CATEGORIES = {
               "adult",
               "religious",
-              "shop",
               "shopping",
+              "shop",
               "weather",
               "business",
               "legislative"
           }
 
-          # ========================================================
-          # BLOCKED CHANNEL NAMES
-          # ========================================================
-
-          BLOCKED_NAMES = {
-              "pluto",
-              "pluto tv"
+          # Countries mainly used for English entertainment
+          ENGLISH_MAIN_COUNTRIES = {
+              "us",
+              "gb",
+              "ca",
+              "au",
+              "nz",
+              "ie"
           }
 
-          def channel_name(channel):
+          # ========================================================
+          # HELPERS
+          # ========================================================
+
+          def get_name(channel):
               return (
                   channel.get("name")
                   or channel.get("native_name")
@@ -114,22 +110,28 @@ jobs:
                   or "Unknown"
               )
 
-          def categories(channel):
-              result = set()
-
+          def get_categories(channel):
               value = channel.get("categories", [])
-
-              if isinstance(value, list):
-                  for item in value:
-                      if isinstance(item, str):
-                          result.add(item.lower())
-
-              return result
-
-          def languages(feed):
               result = set()
 
+              if isinstance(value, list):
+                  for item in value:
+                      if isinstance(item, str):
+                          result.add(item.lower())
+
+              return result
+
+          def get_country(channel):
+              value = channel.get("country", "")
+
+              if isinstance(value, str):
+                  return value.lower()
+
+              return ""
+
+          def get_languages(feed):
               value = feed.get("languages", [])
+              result = set()
 
               if isinstance(value, list):
                   for item in value:
@@ -138,14 +140,21 @@ jobs:
 
               return result
 
-          def is_blocked_name(name):
-              name = name.lower()
+          def blocked_name(name):
+              text = name.lower()
 
-              for word in BLOCKED_NAMES:
-                  if word in name:
-                      return True
+              blocked_words = [
+                  "pluto tv",
+                  "pluto",
+                  "adult",
+                  "porn",
+                  "xxx"
+              ]
 
-              return False
+              return any(
+                  word in text
+                  for word in blocked_words
+              )
 
           # ========================================================
           # CHANNEL MAP
@@ -161,13 +170,8 @@ jobs:
 
           # ========================================================
           # FEEDS
-          #
-          # feed_id -> feed information
           # ========================================================
 
-          feed_map = {}
-
-          # channel -> feeds
           feeds_by_channel = {}
 
           for feed in feeds:
@@ -177,8 +181,6 @@ jobs:
               if not channel_id or not feed_id:
                   continue
 
-              feed_map[feed_id] = feed
-
               feeds_by_channel.setdefault(
                   channel_id,
                   []
@@ -186,8 +188,6 @@ jobs:
 
           # ========================================================
           # STREAMS
-          #
-          # channel -> list of streams
           # ========================================================
 
           streams_by_channel = {}
@@ -207,47 +207,41 @@ jobs:
           # STREAM SCORE
           # ========================================================
 
-          def score_stream(stream):
-
+          def stream_score(stream):
               score = 0
 
               url = str(
                   stream.get("url", "")
               ).lower()
 
-              label = str(
-                  stream.get("label", "")
-              ).lower()
-
               quality = str(
                   stream.get("quality", "")
               ).lower()
 
-              # HTTPS preferred
+              status = str(
+                  stream.get("status", "")
+              ).lower()
+
+              label = str(
+                  stream.get("label", "")
+              ).lower()
+
               if url.startswith("https://"):
                   score += 30
 
-              # HLS preferred
               if ".m3u8" in url:
                   score += 40
 
-              # Quality
               if "1080" in quality:
                   score += 30
-
               elif "720" in quality:
                   score += 20
-
               elif "576" in quality:
                   score += 10
 
-              # Online streams
-              if str(
-                  stream.get("status", "")
-              ).lower() == "online":
+              if status == "online":
                   score += 50
 
-              # Avoid obvious geo-blocked streams
               if "geo" in label:
                   score -= 100
 
@@ -257,23 +251,24 @@ jobs:
               return score
 
           # ========================================================
-          # BUILD CANDIDATE FEEDS
+          # SELECT CANDIDATES
           # ========================================================
 
           candidates = []
 
           for channel_id, channel in channel_map.items():
 
-              name = channel_name(channel)
+              name = get_name(channel)
 
-              if is_blocked_name(name):
+              if blocked_name(name):
                   continue
 
-              channel_categories = categories(channel)
+              channel_categories = get_categories(channel)
 
-              # Never allow blocked categories
               if channel_categories & BLOCKED_CATEGORIES:
                   continue
+
+              country = get_country(channel)
 
               channel_feeds = feeds_by_channel.get(
                   channel_id,
@@ -284,10 +279,10 @@ jobs:
 
                   feed_id = feed.get("id")
 
-                  feed_languages = languages(feed)
+                  feed_languages = get_languages(feed)
 
                   # ------------------------------------------------
-                  # JAPANESE
+                  # JAPAN
                   # ------------------------------------------------
 
                   if JAPANESE in feed_languages:
@@ -303,7 +298,7 @@ jobs:
                       continue
 
                   # ------------------------------------------------
-                  # VIETNAMESE
+                  # VIETNAM
                   # ------------------------------------------------
 
                   if VIETNAMESE in feed_languages:
@@ -320,15 +315,62 @@ jobs:
 
                   # ------------------------------------------------
                   # ENGLISH
-                  #
-                  # English must also have one of the wanted
-                  # categories.
                   # ------------------------------------------------
 
                   if ENGLISH in feed_languages:
 
-                      if channel_categories & ENGLISH_ALLOWED:
+                      wanted = (
+                          channel_categories
+                          & ENGLISH_ALLOWED
+                      )
 
+                      if not wanted:
+                          continue
+
+                      # Kids / education / science /
+                      # documentary can be international.
+                      learning_categories = {
+                          "children",
+                          "animation",
+                          "education",
+                          "science",
+                          "documentary"
+                      }
+
+                      learning_channel = bool(
+                          channel_categories
+                          & learning_categories
+                      )
+
+                      # Entertainment categories are restricted
+                      # to major English-speaking countries.
+                      entertainment_categories = {
+                          "movies",
+                          "series",
+                          "music",
+                          "family",
+                          "entertainment",
+                          "sports"
+                      }
+
+                      entertainment_channel = bool(
+                          channel_categories
+                          & entertainment_categories
+                      )
+
+                      if learning_channel:
+                          candidates.append({
+                              "channel_id": channel_id,
+                              "feed_id": feed_id,
+                              "type": "ENGLISH",
+                              "channel": channel,
+                              "feed": feed
+                          })
+
+                      elif (
+                          entertainment_channel
+                          and country in ENGLISH_MAIN_COUNTRIES
+                      ):
                           candidates.append({
                               "channel_id": channel_id,
                               "feed_id": feed_id,
@@ -342,27 +384,31 @@ jobs:
           print("========================================")
 
           # ========================================================
-          # FIND BEST STREAM FOR EACH FEED
+          # BUILD PLAYLIST
           # ========================================================
 
           output = [
               "#EXTM3U"
           ]
 
+          used_channel_ids = set()
           used_urls = set()
 
           count_japan = 0
           count_vietnam = 0
           count_english = 0
 
+          # --------------------------------------------------------
+          # Process Japan first
+          # --------------------------------------------------------
+
           for candidate in sorted(
               candidates,
               key=lambda x: (
                   x["type"],
-                  channel_name(
+                  get_name(
                       x["channel"]
-                  ).lower(),
-                  x["feed_id"]
+                  ).lower()
               )
           ):
 
@@ -374,18 +420,18 @@ jobs:
 
               channel_type = candidate["type"]
 
-              name = channel_name(channel)
+              name = get_name(channel)
 
-              # ------------------------------------------------
-              # Get streams for this channel
-              # ------------------------------------------------
+              # One channel = one stream
+              if channel_id in used_channel_ids:
+                  continue
 
               channel_streams = streams_by_channel.get(
                   channel_id,
                   []
               )
 
-              matching_streams = []
+              valid_streams = []
 
               for stream in channel_streams:
 
@@ -406,29 +452,23 @@ jobs:
 
                   stream_feed = stream.get("feed")
 
-                  # If stream explicitly specifies a feed,
-                  # it must match this feed.
                   if stream_feed:
                       if stream_feed != feed_id:
                           continue
 
-                  matching_streams.append(stream)
+                  valid_streams.append(stream)
 
-              if not matching_streams:
+              if not valid_streams:
                   continue
 
-              # ------------------------------------------------
-              # Best stream first
-              # ------------------------------------------------
-
-              matching_streams.sort(
-                  key=score_stream,
+              valid_streams.sort(
+                  key=stream_score,
                   reverse=True
               )
 
               chosen = None
 
-              for stream in matching_streams:
+              for stream in valid_streams:
 
                   url = stream.get(
                       "url",
@@ -449,79 +489,61 @@ jobs:
                   ""
               ).strip()
 
-              if not stream_url:
-                  continue
-
               used_urls.add(stream_url)
+              used_channel_ids.add(channel_id)
 
               # ------------------------------------------------
-              # GROUP TITLE
+              # Group
               # ------------------------------------------------
 
               if channel_type == "JAPAN":
 
-                  group = "🇯🇵 Japan"
-
+                  group = "Japan"
                   count_japan += 1
 
               elif channel_type == "VIETNAM":
 
-                  group = "🇻🇳 Vietnam"
-
+                  group = "Vietnam"
                   count_vietnam += 1
 
               else:
 
-                  channel_categories = categories(
-                      channel
-                  )
+                  cats = get_categories(channel)
 
                   if (
-                      "children" in channel_categories
-                      or "animation" in channel_categories
+                      "children" in cats
+                      or "animation" in cats
                   ):
-
-                      group = "🇬🇧 English | Kids"
+                      group = "English | Kids"
 
                   elif (
-                      "education" in channel_categories
-                      or "science" in channel_categories
+                      "education" in cats
+                      or "science" in cats
                   ):
+                      group = "English | Education"
 
-                      group = "🇬🇧 English | Education"
-
-                  elif "documentary" in channel_categories:
-
-                      group = "🇬🇧 English | Documentary"
+                  elif "documentary" in cats:
+                      group = "English | Documentary"
 
                   elif (
-                      "movies" in channel_categories
-                      or "series" in channel_categories
+                      "movies" in cats
+                      or "series" in cats
                   ):
+                      group = "English | Movies & Series"
 
-                      group = "🇬🇧 English | Movies & Series"
+                  elif "music" in cats:
+                      group = "English | Music"
 
-                  elif "music" in channel_categories:
+                  elif "sports" in cats:
+                      group = "English | Sports"
 
-                      group = "🇬🇧 English | Music"
-
-                  elif "sports" in channel_categories:
-
-                      group = "🇬🇧 English | Sports"
-
-                  elif "family" in channel_categories:
-
-                      group = "🇬🇧 English | Family"
+                  elif "family" in cats:
+                      group = "English | Family"
 
                   else:
-
-                      group = "🇬🇧 English | Entertainment"
+                      group = "English | Entertainment"
 
                   count_english += 1
-
-              # ------------------------------------------------
-              # TVG ID / LOGO
-              # ------------------------------------------------
 
               tvg_id = channel.get(
                   "id",
@@ -532,10 +554,6 @@ jobs:
                   "logo",
                   ""
               )
-
-              # ------------------------------------------------
-              # EXTINF
-              # ------------------------------------------------
 
               extinf = (
                   '#EXTINF:-1'
@@ -555,7 +573,7 @@ jobs:
               output.append(stream_url)
 
           # ========================================================
-          # WRITE PLAYLIST
+          # WRITE FILE
           # ========================================================
 
           with open(
@@ -569,10 +587,6 @@ jobs:
               )
 
               file.write("\n")
-
-          # ========================================================
-          # FINAL REPORT
-          # ========================================================
 
           total = (
               count_japan
@@ -593,9 +607,7 @@ jobs:
 
           if total == 0:
               raise RuntimeError(
-                  "Playlist contains 0 channels. "
-                  "Stopping workflow so an empty playlist "
-                  "will NOT be committed."
+                  "Playlist contains 0 channels."
               )
 
           PY
