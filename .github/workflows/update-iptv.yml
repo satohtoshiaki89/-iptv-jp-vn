@@ -328,298 +328,127 @@ jobs:
 
 
           # ========================================================
-          # VTV AUTOMATIC FALLBACK
+          # VTV - AUTOMATIC FALLBACK
+          # GitHub tests candidates, but a failed test NEVER removes VTV.
           # ========================================================
 
           print("")
           print("========================================")
-          print("VTV FALLBACK")
+          print("VTV AUTOMATIC FALLBACK")
           print("========================================")
 
-          VTV_CHANNELS = [
-              "VTV1", "VTV2", "VTV3", "VTV4", "VTV5",
-              "VTV6", "VTV7", "VTV8", "VTV9",
-          ]
+          VTV_CANDIDATES = {
 
-          VTV_HEADERS = {
-              "User-Agent": (
-                  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                  "AppleWebKit/537.36 (KHTML, like Gecko) "
-                  "Chrome/140.0 Safari/537.36"
-              ),
-              "Accept": (
-                  "text/html,application/xhtml+xml,"
-                  "application/xml;q=0.9,*/*;q=0.8"
-              ),
-              "Accept-Language": (
-                  "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7"
-              ),
+              "VTV1": [
+                  "http://live.tv360.vn/manifest/VTV1_HD/playlist_1080p.m3u8",
+                  "https://live-a.fptplay53.net/live/media/vtv1/live247-hls-avc/index.m3u8",
+                  "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv1-manifest.m3u8",
+              ],
+
+              "VTV2": [
+                  "http://live.tv360.vn/manifest/vtv2/playlist_VTV2-1080-3_6M.m3u8",
+                  "https://live-a.fptplay53.net/live/media/vtv2/live247-hls-avc/index.m3u8",
+                  "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv2-manifest.m3u8",
+              ],
+
+              "VTV3": [
+                  "http://live.tv360.vn/manifest/VTV3/playlist_1080p-5M.m3u8",
+                  "https://live-a.fptplay53.net/live/media/vtv3/live247-hls-avc/index.m3u8",
+                  "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv3-manifest.m3u8",
+              ],
+
+              "VTV4": [
+                  "https://e3.endpoint.cdn.sctvonline.vn/hls/vtv4/index.m3u8|Referer=https://sctvonline.vn/",
+                  "https://live-a.fptplay53.net/live/media/vtv4/live247-hls-avc/index.m3u8",
+                  "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv4-manifest.m3u8",
+              ],
+
+              "VTV5": [
+                  "https://liveh12.vtvcab.vn/hls/ONVTV5_CL/04.m3u8",
+                  "https://live-a.fptplay53.net/live/media/vtv5/live247-hls-avc/index.m3u8",
+                  "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv5-manifest.m3u8",
+              ],
+
+              "VTV6": [
+                  "http://live.tv360.vn/manifest/VTV6_HD/playlist_1080p.m3u8",
+                  "https://live-a.fptplay53.net/live/media/vtv6/live247-hls-avc/index.m3u8",
+                  "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv6-manifest.m3u8",
+              ],
+
+              "VTV7": [
+                  "https://e2.endpoint.cdn.sctvonline.vn/hls/vtv7/index.m3u8|Referer=https://sctvonline.vn/",
+                  "https://live-a.fptplay53.net/live/media/vtv7/live247-hls-avc/index.m3u8",
+                  "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv7-manifest.m3u8",
+              ],
+
+              "VTV8": [
+                  "https://e3.endpoint.cdn.sctvonline.vn/hls/vtv8/index.m3u8|Referer=https://sctvonline.vn/",
+                  "https://live-a.fptplay53.net/live/media/vtv8/live247-hls-avc/index.m3u8",
+                  "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv8-manifest.m3u8",
+              ],
+
+              "VTV9": [
+                  "https://e2.endpoint.cdn.sctvonline.vn/hls/vtv9/index.m3u8|Referer=https://sctvonline.vn/",
+                  "https://live-a.fptplay53.net/live/media/vtv9/live247-hls-avc/index.m3u8",
+                  "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv9-manifest.m3u8",
+              ],
           }
 
-          def valid_hls(url, headers=None):
-
-              if not url or not re.match(
-                  r"^https?://",
-                  url,
-                  re.IGNORECASE
-              ):
-                  return False
-
+          def test_hls(url):
+              test_url = url.split("|", 1)[0]
               try:
-
                   response = session.get(
-                      url,
-                      headers=headers or VTV_HEADERS,
+                      test_url,
                       timeout=12,
                       allow_redirects=True,
+                      headers={
+                          "Accept": "*/*",
+                          "Referer": "https://sctvonline.vn/",
+                      },
                   )
-
-                  if response.status_code != 200:
+                  if response.status_code >= 400:
                       return False
-
-                  return "#EXTM3U" in response.text[:200000]
-
+                  body = response.text[:20000]
+                  return "#EXTM3U" in body or "#EXT-X-" in body
               except Exception as exc:
-
-                  print(
-                      "HLS test error:",
-                      url,
-                      exc
-                  )
-
+                  print("TEST FAILED:", test_url, type(exc).__name__)
                   return False
-
-          def extract_m3u8(text):
-
-              text = text.replace("\\/", "/")
-              text = text.replace("\\u0026", "&")
-
-              patterns = [
-                  r'(?:file|source|src)\s*[:=]\s*["\']'
-                  r'([^"\']+?\.m3u8[^"\']*)',
-                  r'(https?://[^"\'\s<>]+?\.m3u8[^"\'\s<>]*)',
-              ]
-
-              for pattern in patterns:
-
-                  matches = re.findall(
-                      pattern,
-                      text,
-                      flags=re.IGNORECASE
-                  )
-
-                  for url in matches:
-
-                      url = (
-                          url
-                          .replace("\\u0026", "&")
-                          .strip()
-                      )
-
-                      if url.startswith("//"):
-                          url = "https:" + url
-
-                      if valid_hls(url):
-                          return url
-
-              return None
-
-          def try_xemtv(channel):
-
-              page_url = (
-                  "https://xemtv.us/tv/"
-                  + channel.lower()
-                  + ".php"
-              )
-
-              try:
-
-                  response = session.get(
-                      page_url,
-                      headers={
-                          **VTV_HEADERS,
-                          "Referer": "https://xemtv.us/",
-                      },
-                      timeout=15,
-                  )
-
-                  if response.status_code == 200:
-                      return extract_m3u8(
-                          response.text
-                      )
-
-              except Exception as exc:
-
-                  print(
-                      channel,
-                      "xemtv.us error:",
-                      exc
-                  )
-
-              return None
-
-          def try_fpt(channel):
-
-              urls = [
-                  (
-                      "https://live-a.fptplay53.net/live/media/"
-                      + channel.lower()
-                      + "/live247-hls-avc/index.m3u8"
-                  ),
-                  (
-                      "https://live-a.fptplay53.net/live/media/"
-                      + channel.lower()
-                      + "/live-hls-avc/index.m3u8"
-                  ),
-              ]
-
-              for url in urls:
-
-                  if valid_hls(
-                      url,
-                      {
-                          **VTV_HEADERS,
-                          "Referer": "https://fptplay.vn/",
-                          "Origin": "https://fptplay.vn",
-                      }
-                  ):
-                      return url
-
-              return None
-
-          def try_vtvgo(channel):
-
-              url = (
-                  "https://vtvgolive-failover.vtvdigital.vn/"
-                  "vtvgo/"
-                  + channel.lower()
-                  + "-manifest.m3u8"
-              )
-
-              if valid_hls(
-                  url,
-                  {
-                      **VTV_HEADERS,
-                      "Referer": "https://vtvgo.vn/",
-                      "Origin": "https://vtvgo.vn",
-                  }
-              ):
-                  return url
-
-              return None
-
-          def try_xemtv_legacy(channel):
-
-              page_url = (
-                  "https://xemtv.net/tv/"
-                  + channel.lower()
-                  + ".php"
-              )
-
-              try:
-
-                  response = session.get(
-                      page_url,
-                      headers={
-                          **VTV_HEADERS,
-                          "Referer": "https://xemtv.net/",
-                      },
-                      timeout=15,
-                  )
-
-                  if response.status_code == 200:
-                      return extract_m3u8(
-                          response.text
-                      )
-
-              except Exception as exc:
-
-                  print(
-                      channel,
-                      "xemtv.net error:",
-                      exc
-                  )
-
-              return None
 
           vtv_out = []
 
-          for channel in VTV_CHANNELS:
-
+          for channel, candidates in VTV_CANDIDATES.items():
               chosen = None
-              chosen_source = None
 
-              sources = [
-                  ("xemtv.us", try_xemtv),
-                  ("FPTPlay", try_fpt),
-                  ("VTVGo", try_vtvgo),
-                  ("xemtv.net", try_xemtv_legacy),
-              ]
+              for candidate in candidates:
+                  print("Testing", channel, "=>", candidate)
 
-              for source_name, function in sources:
-
-                  print(
-                      channel,
-                      "trying",
-                      source_name
-                  )
-
-                  try:
-                      candidate = function(channel)
-
-                  except Exception as exc:
-
-                      print(
-                          channel,
-                          source_name,
-                          "ERROR:",
-                          exc
-                      )
-
-                      candidate = None
-
-                  if candidate:
-
+                  if test_hls(candidate):
                       chosen = candidate
-                      chosen_source = source_name
+                      print("WORKING CANDIDATE:", channel, "=>", candidate)
                       break
 
-              if chosen:
+              # GitHub may be unable to reach a stream that APTV can reach.
+              # Therefore a failed GitHub test must NOT delete the channel.
+              if chosen is None:
+                  chosen = candidates[0]
+                  print("NO GITHUB VALIDATION - USING FALLBACK:", channel, "=>", chosen)
 
-                  print(
-                      channel,
-                      "=>",
-                      chosen_source,
-                      "=>",
-                      chosen
-                  )
+              info = (
+                  '#EXTINF:-1 '
+                  'tvg-id="' + channel + '" '
+                  'group-title="🇻🇳 Vietnam | VTV",'
+                  + channel
+              )
 
-                  info = (
-                      '#EXTINF:-1 '
-                      'tvg-id="' + channel + '" '
-                      'group-title="🇻🇳 Vietnam | VTV",'
-                      + channel
-                  )
+              vtv_out.append((info, chosen))
 
-                  vtv_out.append(
-                      (
-                          info,
-                          chosen
-                      )
-                  )
+          if len(vtv_out) != 9:
+              raise RuntimeError(
+                  "VTV safety check failed: expected 9 channels, got "
+                  + str(len(vtv_out))
+              )
 
-              else:
-
-                  print(
-                      channel,
-                      "=> NO WORKING SOURCE"
-                  )
-
-          print("")
-          print(
-              "VTV working channels:",
-              len(vtv_out)
-          )
+          print("VTV channels:", len(vtv_out))
 
           # ========================================================
           # ENGLISH
@@ -762,47 +591,6 @@ jobs:
                   )
 
 
-              # ----------------------------------------------------
-              # SCIENCE
-              # ----------------------------------------------------
-
-              if any(
-                  x in text
-                  for x in [
-
-                      "science",
-                      "national geographic",
-                      "nat geo",
-
-                  ]
-              ):
-
-                  return (
-                      "🇬🇧 English | Science"
-                  )
-
-
-              # ----------------------------------------------------
-              # DOCUMENTARY
-              # ----------------------------------------------------
-
-              if any(
-                  x in text
-                  for x in [
-
-                      "documentary",
-                      "documentaries",
-                      "history",
-                      "wildlife",
-                      "nature",
-
-                  ]
-              ):
-
-                  return (
-                      "🇬🇧 English | Documentary"
-                  )
-
 
               # ----------------------------------------------------
               # MOVIES
@@ -825,25 +613,6 @@ jobs:
                       "🇬🇧 English | Movies"
                   )
 
-
-              # ----------------------------------------------------
-              # SERIES
-              # ----------------------------------------------------
-
-              if any(
-                  x in text
-                  for x in [
-
-                      "series",
-                      "drama",
-                      "tv series",
-
-                  ]
-              ):
-
-                  return (
-                      "🇬🇧 English | Series"
-                  )
 
 
               # ----------------------------------------------------
@@ -1054,7 +823,7 @@ jobs:
 
               "# Vietnam non-VTV source preserved",
 
-              "# VTV automatic fallback sources",
+              "# VTV automatic fallback",
 
               "# English source preserved",
 
