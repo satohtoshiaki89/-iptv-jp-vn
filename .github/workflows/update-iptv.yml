@@ -16,19 +16,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-            - name: Download and merge playlists
+      - name: Download and merge playlists
         run: |
           python - <<'PY'
           import urllib.request
 
-          # =========================
-          # 1. NGUỒN PLAYLIST
-          # =========================
-
           sources = [
               ("JAPAN", "https://iptv-org.github.io/iptv/countries/jp.m3u"),
               ("VIETNAM", "https://iptv-org.github.io/iptv/countries/vn.m3u"),
-
               ("MOVIES", "https://iptv-org.github.io/iptv/categories/movies.m3u"),
               ("SERIES", "https://iptv-org.github.io/iptv/categories/series.m3u"),
               ("ENTERTAINMENT", "https://iptv-org.github.io/iptv/categories/entertainment.m3u"),
@@ -39,12 +34,7 @@ jobs:
               ("SPORTS", "https://iptv-org.github.io/iptv/categories/sports.m3u"),
           ]
 
-          # =========================
-          # 2. KÊNH QUỐC TẾ MUỐN GIỮ
-          # =========================
-
           allowed_keywords = [
-              # Movies / Series
               "Pluto TV",
               "Classic Movies",
               "Crime Movies",
@@ -55,42 +45,28 @@ jobs:
               "Cult Films",
               "Spotlight",
               "Action",
-
-              # Kids
               "PBS Kids",
               "HappyKids",
               "BBC Kids",
               "Kids Series",
               "TVOKids",
-
-              # Documentary
               "NASA",
               "Documentary",
               "Forensic Files",
               "Law & Crime",
               "Nature",
-
-              # Music
               "Vevo",
               "Music",
               "NickMusic",
-
-              # News
               "BBC News",
               "DW",
               "France 24",
               "Al Jazeera",
               "Euronews",
               "NHK WORLD",
-
-              # Sports
               "Red Bull",
               "World Poker Tour",
           ]
-
-          # =========================
-          # 3. TẢI PLAYLIST
-          # =========================
 
           playlists = []
 
@@ -99,97 +75,61 @@ jobs:
               print(url)
 
               try:
-                  req = urllib.request.Request(
+                  request = urllib.request.Request(
                       url,
                       headers={"User-Agent": "Mozilla/5.0"}
                   )
 
-                  with urllib.request.urlopen(req, timeout=60) as r:
-                      data = r.read().decode("utf-8", errors="ignore")
+                  with urllib.request.urlopen(request, timeout=60) as response:
+                      data = response.read().decode("utf-8", errors="ignore")
 
                   print(f"{name} OK - {len(data)} bytes")
                   playlists.append((name, data))
 
-              except Exception as e:
-                  print(f"{name} FAILED: {e}")
-
-          # =========================
-          # 4. TẠO PLAYLIST
-          # =========================
+              except Exception as error:
+                  print(f"{name} FAILED: {error}")
 
           output = ["#EXTM3U"]
           seen_urls = set()
 
           for source_name, data in playlists:
-
               lines = data.splitlines()
-
-              # Nhật + Việt Nam: giữ toàn bộ
-              if source_name in ["JAPAN", "VIETNAM"]:
-
-                  i = 0
-
-                  while i < len(lines):
-
-                      if lines[i].startswith("#EXTINF") and i + 1 < len(lines):
-
-                          info = lines[i]
-                          url = lines[i + 1].strip()
-
-                          if url and url not in seen_urls:
-                              output.append(info)
-                              output.append(url)
-                              seen_urls.add(url)
-
-                          i += 2
-
-                      else:
-                          i += 1
-
-                  continue
-
-              # Quốc tế: chỉ giữ các kênh phù hợp
               i = 0
 
               while i < len(lines):
-
                   if lines[i].startswith("#EXTINF") and i + 1 < len(lines):
-
                       info = lines[i]
-                      channel_name = info.split(",")[-1].strip()
+                      url = lines[i + 1].strip()
 
-                      matched = any(
-                          keyword.lower() in channel_name.lower()
-                          for keyword in allowed_keywords
-                      )
+                      if source_name in ["JAPAN", "VIETNAM"]:
+                          matched = True
+                      else:
+                          channel_name = info.split(",")[-1].strip()
 
-                      if matched:
+                          matched = any(
+                              keyword.lower() in channel_name.lower()
+                              for keyword in allowed_keywords
+                          )
 
-                          url = lines[i + 1].strip()
-
-                          if url and url not in seen_urls:
-                              output.append(info)
-                              output.append(url)
-                              seen_urls.add(url)
+                      if matched and url and url not in seen_urls:
+                          output.append(info)
+                          output.append(url)
+                          seen_urls.add(url)
 
                       i += 2
-
                   else:
                       i += 1
 
-          # =========================
-          # 5. GHI FILE
-          # =========================
-
-          with open("jp-vn.m3u", "w", encoding="utf-8") as f:
-              f.write("\n".join(output))
-              f.write("\n")
+          with open("jp-vn.m3u", "w", encoding="utf-8") as file:
+              file.write("\n".join(output))
+              file.write("\n")
 
           print("================================")
           print("Playlist created successfully.")
           print(f"Total streams: {len(seen_urls)}")
           print("================================")
           PY
+
       - name: Commit playlist
         run: |
           git config user.name "github-actions[bot]"
