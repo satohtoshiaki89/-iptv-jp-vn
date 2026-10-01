@@ -14,16 +14,8 @@ jobs:
 
     steps:
 
-      # ============================================================
-      # CHECKOUT
-      # ============================================================
-
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      # ============================================================
-      # BUILD PLAYLIST
-      # ============================================================
 
       - name: Build IPTV playlist
         env:
@@ -31,6 +23,7 @@ jobs:
           VIETNAM_URL: "https://raw.githubusercontent.com/ZXArkin/my-personal-iptv/iptv-radio/ZXIPTV.m3u"
           ENGLISH_URL: "https://iptv-org.github.io/iptv/languages/eng.m3u"
           CATEGORY_URL: "https://iptv-org.github.io/iptv/index.category.m3u"
+
         run: |
 
           python3 <<'PY'
@@ -38,12 +31,11 @@ jobs:
           import os
           import re
           import urllib.request
-          import urllib.error
           from pathlib import Path
 
-          # ========================================================
+          # ============================================================
           # CONFIG
-          # ========================================================
+          # ============================================================
 
           JAPAN_URL = os.environ["JAPAN_URL"]
           VIETNAM_URL = os.environ["VIETNAM_URL"]
@@ -51,121 +43,45 @@ jobs:
           CATEGORY_URL = os.environ["CATEGORY_URL"]
 
           OUTPUT = Path("jp-vn.m3u")
-          TEMP_OUTPUT = Path("jp-vn.m3u.tmp")
+          TEMP = Path("jp-vn.m3u.tmp")
 
-          UA = (
+          USER_AGENT = (
               "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
               "AppleWebKit/537.36 (KHTML, like Gecko) "
               "Chrome/131.0 Safari/537.36"
           )
 
-          # ========================================================
+          # ============================================================
           # DOWNLOAD
-          # ========================================================
+          # ============================================================
 
-          def download(url, headers=None, timeout=45):
+          def download(url):
 
-              h = {
-                  "User-Agent": UA,
-                  "Accept": "*/*",
-              }
-
-              if headers:
-                  h.update(headers)
-
-              req = urllib.request.Request(
+              request = urllib.request.Request(
                   url,
-                  headers=h
+                  headers={
+                      "User-Agent": USER_AGENT,
+                      "Accept": "*/*"
+                  }
               )
 
               with urllib.request.urlopen(
-                  req,
-                  timeout=timeout
-              ) as r:
+                  request,
+                  timeout=60
+              ) as response:
 
-                  data = r.read()
-
-              return data.decode(
-                  "utf-8",
-                  errors="replace"
-              )
-
-
-          # ========================================================
-          # TEST HLS
-          # ========================================================
-
-          def test_hls(url, referer=None):
-
-              try:
-
-                  headers = {
-                      "User-Agent": UA,
-                      "Accept": "*/*",
-                  }
-
-                  if referer:
-                      headers["Referer"] = referer
-
-                  req = urllib.request.Request(
-                      url,
-                      headers=headers
+                  return response.read().decode(
+                      "utf-8",
+                      errors="replace"
                   )
 
-                  with urllib.request.urlopen(
-                      req,
-                      timeout=15
-                  ) as r:
-
-                      data = r.read(
-                          12000
-                      ).decode(
-                          "utf-8",
-                          errors="replace"
-                      )
-
-                      status = getattr(
-                          r,
-                          "status",
-                          200
-                      )
-
-                  if status == 200 and "#EXTM3U" in data:
-
-                      print(
-                          "HLS OK:",
-                          url
-                      )
-
-                      return True
-
-                  print(
-                      "HLS BAD:",
-                      status,
-                      url
-                  )
-
-                  return False
-
-              except Exception as e:
-
-                  print(
-                      "HLS ERROR:",
-                      url,
-                      str(e)
-                  )
-
-                  return False
-
-
-          # ========================================================
-          # M3U PARSER
-          # ========================================================
+          # ============================================================
+          # PARSE M3U
+          # ============================================================
 
           def parse_m3u(text):
 
-              entries = []
-
+              result = []
               current = None
 
               for line in text.splitlines():
@@ -182,73 +98,38 @@ jobs:
                           "url": None
                       }
 
-                  elif (
-                      current
-                      and not line.startswith("#")
-                  ):
+                  elif current and not line.startswith("#"):
 
                       current["url"] = line
-
-                      entries.append(
-                          current
-                      )
-
+                      result.append(current)
                       current = None
 
-              return entries
+              return result
 
-
-          # ========================================================
-          # M3U HELPERS
-          # ========================================================
+          # ============================================================
+          # HELPERS
+          # ============================================================
 
           def get_name(entry):
 
               info = entry["info"]
 
               if "," in info:
-                  return info.split(
-                      ",",
-                      1
-                  )[1].strip()
+                  return info.split(",", 1)[1].strip()
 
               return ""
 
-
           def get_id(entry):
 
-              m = re.search(
+              match = re.search(
                   r'tvg-id="([^"]*)"',
                   entry["info"],
                   re.I
               )
 
-              return (
-                  m.group(1).strip()
-                  if m
-                  else ""
-              )
+              return match.group(1).strip() if match else ""
 
-
-          def get_group(entry):
-
-              m = re.search(
-                  r'group-title="([^"]*)"',
-                  entry["info"],
-                  re.I
-              )
-
-              return (
-                  m.group(1).strip()
-                  if m
-                  else ""
-              )
-
-
-          def set_group(
-              entry,
-              group
-          ):
+          def set_group(entry, group):
 
               info = entry["info"]
 
@@ -278,37 +159,24 @@ jobs:
                   "url": entry["url"]
               }
 
-
-          # ========================================================
+          # ============================================================
           # JAPAN
-          # ========================================================
+          # ============================================================
 
-          print("")
-          print("========================================")
+          print("================================")
           print("JAPAN")
-          print("========================================")
+          print("================================")
 
-          japan_text = download(
-              JAPAN_URL
-          )
-
-          japan_entries = parse_m3u(
-              japan_text
-          )
+          japan_source = download(JAPAN_URL)
+          japan_entries = parse_m3u(japan_source)
 
           japan_result = []
-
           japan_seen = set()
 
           for entry in japan_entries:
 
-              name = get_name(
-                  entry
-              )
-
-              tid = get_id(
-                  entry
-              )
+              name = get_name(entry)
+              tid = get_id(entry)
 
               key = (
                   tid.lower()
@@ -321,19 +189,13 @@ jobs:
               if key in japan_seen:
                   continue
 
-              japan_seen.add(
-                  key
-              )
-
-              # Keep the source itself intact,
-              # only change category.
-              entry = set_group(
-                  entry,
-                  "🇯🇵 Japan"
-              )
+              japan_seen.add(key)
 
               japan_result.append(
-                  entry
+                  set_group(
+                      entry,
+                      "🇯🇵 Japan"
+                  )
               )
 
           print(
@@ -341,45 +203,26 @@ jobs:
               len(japan_result)
           )
 
-
-          # ========================================================
+          # ============================================================
           # VIETNAM
           #
           # IMPORTANT:
-          # Do NOT filter Vietnam by keywords.
-          # Keep the source exactly as supplied.
+          # DO NOT FILTER VIETNAM BY KEYWORDS.
+          # Keep the original source.
           # Only remove old VTV entries.
-          # ========================================================
+          # ============================================================
 
-          print("")
-          print("========================================")
+          print("================================")
           print("VIETNAM")
-          print("========================================")
+          print("================================")
 
-          vietnam_text = download(
-              VIETNAM_URL
-          )
-
-          vietnam_entries = parse_m3u(
-              vietnam_text
-          )
-
+          vietnam_source = download(VIETNAM_URL)
+          vietnam_entries = parse_m3u(vietnam_source)
 
           def is_vtv(entry):
 
-              name = get_name(
-                  entry
-              ).lower().strip()
-
-              tid = get_id(
-                  entry
-              ).lower().strip()
-
-              text = (
-                  name
-                  + " "
-                  + tid
-              )
+              name = get_name(entry).lower().strip()
+              tid = get_id(entry).lower().strip()
 
               # VTV1 ... VTV9
               if re.match(
@@ -394,24 +237,27 @@ jobs:
               ):
                   return True
 
+              # VTV stream IDs such as VTV1.vn@HD
               if re.match(
-                  r"^vtv[1-9](?:\.vn)?@",
+                  r"^vtv[1-9]\.vn@",
                   tid
               ):
                   return True
 
-              # Special VTV feeds
+              # VTV special channels
               special = [
-                  "vtv tây nguyên",
-                  "vtv tay nguyen",
                   "vtv5 tây nguyên",
                   "vtv5 tay nguyen",
+                  "vtv5 tây nam bộ",
+                  "vtv5 tay nam bo",
                   "vtv5 tnb",
                   "vtv cần thơ",
                   "vtv can tho",
                   "vtvct",
-                  "vtv10",
+                  "vtv10"
               ]
+
+              text = name + " " + tid
 
               if any(
                   x in text
@@ -421,364 +267,235 @@ jobs:
 
               return False
 
-
           vietnam_result = []
 
           for entry in vietnam_entries:
 
-              # ONLY remove VTV.
-              # Everything else is preserved.
+              # Remove ONLY old VTV entries.
               if is_vtv(entry):
                   continue
 
-              entry = set_group(
-                  entry,
-                  "🇻🇳 Vietnam"
-              )
-
               vietnam_result.append(
-                  entry
+                  set_group(
+                      entry,
+                      "🇻🇳 Vietnam"
+                  )
               )
 
+          # Deduplicate while preserving source
+          vietnam_seen = set()
+          vietnam_clean = []
+
+          for entry in vietnam_result:
+
+              key = (
+                  get_id(entry).lower()
+                  or get_name(entry).lower()
+              )
+
+              if not key:
+                  continue
+
+              if key in vietnam_seen:
+                  continue
+
+              vietnam_seen.add(key)
+              vietnam_clean.append(entry)
 
           print(
-              "Vietnam non-VTV:",
-              len(vietnam_result)
+              "Vietnam:",
+              len(vietnam_clean)
           )
 
-
-          # ========================================================
-          # VTV SOURCES
+          # ============================================================
+          # VTV
           #
-          # We test each channel.
+          # Official VTVGo CDN endpoints.
           #
-          # Priority:
-          # 1. VTVGo official CDN
-          # 2. FPT Play CDN
-          #
-          # No fake URL.
-          # If neither source works, STOP the workflow.
-          # ========================================================
+          # NO GitHub-side stream test.
+          # NO FPT 403 test.
+          # ============================================================
 
-          print("")
-          print("========================================")
-          print("VTV SOURCE TEST")
-          print("========================================")
+          print("================================")
+          print("VTV")
+          print("================================")
 
+          VTV = {
 
-          VTV_SOURCES = {
+              "VTV1": (
+                  "https://vtvgolive-failover.vtvdigital.vn/"
+                  "vtvgo/vtv1-manifest.m3u8"
+              ),
 
-              "VTV1": [
+              "VTV2": (
+                  "https://vtvgolive-failover.vtvdigital.vn/"
+                  "vtvgo/vtv2-manifest.m3u8"
+              ),
 
-                  (
-                      "https://vtvgolive-failover.vtvdigital.vn/"
-                      "vtvgo/vtv1-manifest.m3u8",
-                      "https://vtvgo.vn/"
-                  ),
+              "VTV3": (
+                  "https://vtvgolive-failover.vtvdigital.vn/"
+                  "vtvgo/vtv3-manifest.m3u8"
+              ),
 
-                  (
-                      "https://live-a.fptplay53.net/"
-                      "live/media/vtv1/live247-hls-avc/index.m3u8",
-                      "https://fptplay.vn/"
-                  ),
+              "VTV4": (
+                  "https://vtvgolive-failover.vtvdigital.vn/"
+                  "vtvgo/vtv4-manifest.m3u8"
+              ),
 
-              ],
+              "VTV5": (
+                  "https://vtvgolive-failover.vtvdigital.vn/"
+                  "vtvgo/vtv5-manifest.m3u8"
+              ),
 
+              "VTV6": (
+                  "https://vtvgolive-failover.vtvdigital.vn/"
+                  "vtvgo/vtv6-manifest.m3u8"
+              ),
 
-              "VTV2": [
+              "VTV7": (
+                  "https://vtvgolive-failover.vtvdigital.vn/"
+                  "vtvgo/vtv7-manifest.m3u8"
+              ),
 
-                  (
-                      "https://vtvgolive-failover.vtvdigital.vn/"
-                      "vtvgo/vtv2-manifest.m3u8",
-                      "https://vtvgo.vn/"
-                  ),
+              "VTV8": (
+                  "https://vtvgolive-failover.vtvdigital.vn/"
+                  "vtvgo/vtv8-manifest.m3u8"
+              ),
 
-                  (
-                      "https://live-a.fptplay53.net/"
-                      "live/media/vtv2/live247-hls-avc/index.m3u8",
-                      "https://fptplay.vn/"
-                  ),
+              "VTV9": (
+                  "https://vtvgolive-failover.vtvdigital.vn/"
+                  "vtvgo/vtv9-manifest.m3u8"
+              ),
 
-              ],
-
-
-              "VTV3": [
-
-                  (
-                      "https://vtvgolive-failover.vtvdigital.vn/"
-                      "vtvgo/vtv3-manifest.m3u8",
-                      "https://vtvgo.vn/"
-                  ),
-
-                  (
-                      "https://live-a.fptplay53.net/"
-                      "live/media/vtv3/live247-hls-avc/index.m3u8",
-                      "https://fptplay.vn/"
-                  ),
-
-              ],
-
-
-              "VTV4": [
-
-                  (
-                      "https://vtvgolive-failover.vtvdigital.vn/"
-                      "vtvgo/vtv4-manifest.m3u8",
-                      "https://vtvgo.vn/"
-                  ),
-
-                  (
-                      "https://live-a.fptplay53.net/"
-                      "live/media/vtv4/live247-hls-avc/index.m3u8",
-                      "https://fptplay.vn/"
-                  ),
-
-              ],
-
-
-              "VTV5": [
-
-                  (
-                      "https://vtvgolive-failover.vtvdigital.vn/"
-                      "vtvgo/vtv5-manifest.m3u8",
-                      "https://vtvgo.vn/"
-                  ),
-
-                  (
-                      "https://live-a.fptplay53.net/"
-                      "live/media/vtv5/live247-hls-avc/index.m3u8",
-                      "https://fptplay.vn/"
-                  ),
-
-              ],
-
-
-              "VTV6": [
-
-                  (
-                      "https://vtvgolive-failover.vtvdigital.vn/"
-                      "vtvgo/vtv6-manifest.m3u8",
-                      "https://vtvgo.vn/"
-                  ),
-
-                  (
-                      "https://live.fptplay53.net/"
-                      "fnxhd1/vtv6hd_vhls.smil/chunklist.m3u8",
-                      "https://fptplay.vn/"
-                  ),
-
-              ],
-
-
-              "VTV7": [
-
-                  (
-                      "https://vtvgolive-failover.vtvdigital.vn/"
-                      "vtvgo/vtv7-manifest.m3u8",
-                      "https://vtvgo.vn/"
-                  ),
-
-                  (
-                      "https://live.fptplay53.net/"
-                      "fnxhd1/vtv7hd_vhls.smil/"
-                      "chunklist_b5000000.m3u8",
-                      "https://fptplay.vn/"
-                  ),
-
-              ],
-
-
-              "VTV8": [
-
-                  (
-                      "https://vtvgolive-failover.vtvdigital.vn/"
-                      "vtvgo/vtv8-manifest.m3u8",
-                      "https://vtvgo.vn/"
-                  ),
-
-                  (
-                      "https://live.fptplay53.net/"
-                      "epzhd1/vtv8hd_vhls.smil/chunklist.m3u8",
-                      "https://fptplay.vn/"
-                  ),
-
-              ],
-
-
-              "VTV9": [
-
-                  (
-                      "https://vtvgolive-failover.vtvdigital.vn/"
-                      "vtvgo/vtv9-manifest.m3u8",
-                      "https://vtvgo.vn/"
-                  ),
-
-                  (
-                      "https://live.fptplay53.net/"
-                      "fnxhd1/vtv9hd_vhls.smil/chunklist.m3u8",
-                      "https://fptplay.vn/"
-                  ),
-
-              ],
-
+              "VTV Cần Thơ": (
+                  "https://vtvgolive-failover.vtvdigital.vn/"
+                  "vtvgo/vtvct-manifest.m3u8"
+              )
           }
 
+          VTV_LOGOS = {
 
-          selected_vtv = {}
+              "VTV1":
+                  "https://i.imgur.com/nfkmvAY.png",
 
-          for channel, sources in VTV_SOURCES.items():
+              "VTV2":
+                  "https://i.imgur.com/BVwi3K3.png",
 
-              print("")
-              print(
-                  "Testing",
-                  channel
-              )
+              "VTV3":
+                  "https://i.imgur.com/7rLCvgS.png",
 
-              selected = None
+              "VTV4":
+                  "https://i.imgur.com/9zVTtsA.png",
 
-              for url, referer in sources:
+              "VTV5":
+                  "https://i.imgur.com/7qPKNFU.png",
 
-                  if test_hls(
-                      url,
-                      referer
-                  ):
+              "VTV6":
+                  "https://raw.githubusercontent.com/"
+                  "ntd249/logochannel/refs/heads/main/VTV6.png",
 
-                      selected = (
-                          url,
-                          referer
-                      )
+              "VTV7":
+                  "https://i.imgur.com/AgamSNe.png",
 
-                      print(
-                          "SELECTED:",
-                          channel,
-                          url
-                      )
+              "VTV8":
+                  "https://i.imgur.com/lpcltL9.png",
 
-                      break
-
-              if not selected:
-
-                  raise RuntimeError(
-                      f"No working source found for {channel}. "
-                      "Playlist will NOT be overwritten."
-                  )
-
-              selected_vtv[channel] = selected
-
-
-          # ========================================================
-          # ADD VTV
-          # ========================================================
+              "VTV9":
+                  "https://i.imgur.com/Ex1VkGQ.png"
+          }
 
           vtv_result = []
 
-          for channel in [
-              "VTV1",
-              "VTV2",
-              "VTV3",
-              "VTV4",
-              "VTV5",
-              "VTV6",
-              "VTV7",
-              "VTV8",
-              "VTV9",
-          ]:
+          for channel, url in VTV.items():
 
-              url, referer = selected_vtv[
-                  channel
-              ]
+              if channel == "VTV Cần Thơ":
 
-              number = channel.replace(
-                  "VTV",
-                  ""
-              )
+                  tid = "VTV10.vn@HD"
+                  logo = ""
+                  display = "VTV Cần Thơ HD"
+
+              else:
+
+                  number = channel.replace(
+                      "VTV",
+                      ""
+                  )
+
+                  tid = (
+                      f"VTV{number}.vn@HD"
+                  )
+
+                  logo = VTV_LOGOS.get(
+                      channel,
+                      ""
+                  )
+
+                  display = (
+                      f"{channel} HD"
+                  )
 
               info = (
                   '#EXTINF:-1 '
-                  f'tvg-id="VTV{number}.vn@HD" '
+                  f'tvg-id="{tid}" '
                   'group-title="🇻🇳 VTV" '
-                  f'tvg-name="{channel} HD",'
-                  f'{channel} HD'
+                  f'tvg-logo="{logo}",'
+                  f'{display}'
               )
 
-              vtv_entry = {
+              vtv_result.append({
                   "info": info,
-                  "url": url,
-                  "referer": referer
-              }
-
-              vtv_result.append(
-                  vtv_entry
-              )
-
+                  "url": url
+              })
 
           print(
               "VTV:",
               len(vtv_result)
           )
 
-
-          # ========================================================
+          # ============================================================
           # ENGLISH
-          # ========================================================
+          # ============================================================
 
-          print("")
-          print("========================================")
+          print("================================")
           print("ENGLISH")
-          print("========================================")
+          print("================================")
 
-          english_text = download(
+          english_source = download(
               ENGLISH_URL
           )
 
           english_entries = parse_m3u(
-              english_text
+              english_source
           )
 
-
-          print(
-              "English source:",
-              len(english_entries)
-          )
-
-
-          # Download category database
-          category_text = download(
+          category_source = download(
               CATEGORY_URL
           )
 
           category_entries = parse_m3u(
-              category_text
+              category_source
           )
-
 
           categories = {}
 
           for entry in category_entries:
 
-              tid = get_id(
-                  entry
-              ).lower()
+              tid = get_id(entry).lower()
 
               if not tid:
                   continue
 
-              categories[
-                  tid
-              ] = (
-                  get_group(entry)
-                  + " "
-                  + get_name(entry)
+              categories[tid] = (
+                  get_name(entry)
                   + " "
                   + entry["info"]
               ).lower()
 
+          # ============================================================
+          # ENGLISH CATEGORIES
+          # ============================================================
 
-          # ========================================================
-          # ENGLISH CATEGORIES WANTED
-          # ========================================================
-
-          wanted_categories = [
+          wanted = [
 
               "kids",
               "children",
@@ -814,10 +531,8 @@ jobs:
 
               "culture",
 
-              "travel",
-
+              "travel"
           ]
-
 
           blocked = [
 
@@ -843,55 +558,19 @@ jobs:
 
               "court",
 
-              "pluto",
-
+              "pluto"
           ]
 
-
-          # Major English-speaking markets
-          english_country_codes = {
-
+          english_countries = {
               "us",
               "gb",
               "uk",
               "ca",
               "au",
               "nz",
-              "ie",
-
+              "ie"
           }
 
-
-          def has_country(
-              text
-          ):
-
-              text = text.lower()
-
-              for code in english_country_codes:
-
-                  patterns = [
-
-                      f".{code}",
-                      f"@{code}",
-                      f"_{code}",
-                      f"-{code}",
-                      f"({code})",
-                      f" {code} ",
-
-                  ]
-
-                  if any(
-                      p in text
-                      for p in patterns
-                  ):
-
-                      return True
-
-              return False
-
-
-          # Major international English brands.
           global_brands = [
 
               "bbc",
@@ -943,32 +622,44 @@ jobs:
               "tennis channel",
 
               "travel channel",
-              "food network",
-
+              "food network"
           ]
 
+          def english_country(text):
+
+              text = text.lower()
+
+              for country in english_countries:
+
+                  patterns = [
+
+                      f".{country}",
+                      f"@{country}",
+                      f"_{country}",
+                      f"-{country}",
+                      f"({country})",
+                      f" {country} "
+
+                  ]
+
+                  if any(
+                      p in text
+                      for p in patterns
+                  ):
+                      return True
+
+              return False
 
           english_result = []
 
           for entry in english_entries:
 
-              tid = get_id(
-                  entry
-              ).lower()
+              tid = get_id(entry).lower()
+              name = get_name(entry).lower()
+              info = entry["info"].lower()
+              url = entry["url"].lower()
 
-              name = get_name(
-                  entry
-              ).lower()
-
-              info = entry[
-                  "info"
-              ].lower()
-
-              url = entry[
-                  "url"
-              ].lower()
-
-              full = (
+              text = (
                   tid
                   + " "
                   + name
@@ -978,9 +669,9 @@ jobs:
                   + url
               )
 
-              # Remove Pluto and blocked categories
+              # Block unwanted channels
               if any(
-                  x in full
+                  x in text
                   for x in blocked
               ):
                   continue
@@ -991,44 +682,38 @@ jobs:
               )
 
               combined = (
-                  full
+                  text
                   + " "
                   + category
               )
 
-              # Must belong to wanted category
+              # Only requested categories
               if not any(
                   x in combined
-                  for x in wanted_categories
+                  for x in wanted
               ):
                   continue
 
               # English-speaking country
-              # OR recognized international English brand.
-              if not has_country(
-                  combined
-              ):
+              # or major international English brand
+              if not english_country(combined):
 
                   if not any(
                       brand in combined
                       for brand in global_brands
                   ):
-
                       continue
 
-              entry = set_group(
-                  entry,
-                  "🇬🇧 English"
-              )
-
               english_result.append(
-                  entry
+                  set_group(
+                      entry,
+                      "🇬🇧 English"
+                  )
               )
 
-
-          # ========================================================
+          # ============================================================
           # DEDUP ENGLISH
-          # ========================================================
+          # ============================================================
 
           english_seen = {}
 
@@ -1044,23 +729,14 @@ jobs:
 
               if key not in english_seen:
 
-                  english_seen[
-                      key
-                  ] = entry
+                  english_seen[key] = entry
 
               else:
 
-                  old = english_seen[
-                      key
-                  ]
+                  old = english_seen[key]
 
-                  old_info = old[
-                      "info"
-                  ].lower()
-
-                  new_info = entry[
-                      "info"
-                  ].lower()
+                  old_info = old["info"].lower()
+                  new_info = entry["info"].lower()
 
                   old_hd = (
                       " hd" in old_info
@@ -1074,69 +750,66 @@ jobs:
                       or "720" in new_info
                   )
 
-                  if (
-                      new_hd
-                      and not old_hd
-                  ):
-
-                      english_seen[
-                          key
-                      ] = entry
-
+                  if new_hd and not old_hd:
+                      english_seen[key] = entry
 
           english_result = list(
               english_seen.values()
           )
-
 
           print(
               "English:",
               len(english_result)
           )
 
+          # ============================================================
+          # FINAL
+          # ============================================================
 
-          # ========================================================
-          # FINAL COUNTS
-          # ========================================================
-
-          total = (
-              len(japan_result)
-              + len(vietnam_result)
-              + len(vtv_result)
-              + len(english_result)
+          final_entries = (
+              japan_result
+              + vietnam_clean
+              + vtv_result
+              + english_result
           )
 
+          total = len(final_entries)
 
           print("")
-          print("========================================")
-          print("FINAL PLAYLIST")
-          print("========================================")
+          print("================================")
+          print("FINAL")
+          print("================================")
+
           print(
-              "Japan       :",
+              "Japan   :",
               len(japan_result)
           )
+
           print(
-              "Vietnam     :",
-              len(vietnam_result)
+              "Vietnam :",
+              len(vietnam_clean)
           )
+
           print(
-              "VTV         :",
+              "VTV     :",
               len(vtv_result)
           )
+
           print(
-              "English     :",
+              "English :",
               len(english_result)
           )
+
           print(
-              "TOTAL       :",
+              "TOTAL   :",
               total
           )
-          print("========================================")
 
+          print("================================")
 
-          # ========================================================
-          # SAFETY CHECK
-          # ========================================================
+          # ============================================================
+          # SAFETY
+          # ============================================================
 
           if len(japan_result) < 30:
 
@@ -1144,20 +817,17 @@ jobs:
                   "Japan source unexpectedly small."
               )
 
-
-          if len(vietnam_result) < 70:
+          if len(vietnam_clean) < 50:
 
               raise RuntimeError(
                   "Vietnam source unexpectedly small."
               )
 
-
-          if len(vtv_result) != 9:
+          if len(vtv_result) != 10:
 
               raise RuntimeError(
-                  "Not all 9 VTV channels have working sources."
+                  "VTV list was not generated correctly."
               )
-
 
           if len(english_result) < 500:
 
@@ -1165,30 +835,28 @@ jobs:
                   "English source unexpectedly small."
               )
 
-
           if total < 800:
 
               raise RuntimeError(
                   "Final playlist unexpectedly small."
               )
 
+          # ============================================================
+          # WRITE PLAYLIST
+          # ============================================================
 
-          # ========================================================
-          # WRITE TEMPORARY PLAYLIST
-          # ========================================================
+          output = []
 
-          output = [
+          output.append("#EXTM3U")
+          output.append("")
+          output.append(
+              "# ========================================"
+          )
+          output.append("# 🇯🇵 JAPAN")
+          output.append(
+              "# ========================================"
+          )
 
-              "#EXTM3U",
-
-              "# ========================================",
-              "# 🇯🇵 JAPAN",
-              "# ========================================",
-
-          ]
-
-
-          # Japan
           for entry in japan_result:
 
               output.append(
@@ -1199,19 +867,16 @@ jobs:
                   entry["url"]
               )
 
+          output.append("")
+          output.append(
+              "# ========================================"
+          )
+          output.append("# 🇻🇳 VIETNAM")
+          output.append(
+              "# ========================================"
+          )
 
-          output.extend([
-
-              "",
-              "# ========================================",
-              "# 🇻🇳 VIETNAM",
-              "# ========================================",
-
-          ])
-
-
-          # Vietnam
-          for entry in vietnam_result:
+          for entry in vietnam_clean:
 
               output.append(
                   entry["info"]
@@ -1221,47 +886,34 @@ jobs:
                   entry["url"]
               )
 
+          output.append("")
+          output.append(
+              "# ========================================"
+          )
+          output.append("# 🇻🇳 VTV")
+          output.append(
+              "# ========================================"
+          )
 
-          output.extend([
-
-              "",
-              "# ========================================",
-              "# 🇻🇳 VTV",
-              "# ========================================",
-
-          ])
-
-
-          # VTV
           for entry in vtv_result:
 
               output.append(
                   entry["info"]
               )
 
-              # APTV may ignore EXTVLCOPT,
-              # but it is harmless for players that support it.
-              output.append(
-                  "#EXTVLCOPT:http-referrer="
-                  + entry["referer"]
-              )
-
               output.append(
                   entry["url"]
               )
 
+          output.append("")
+          output.append(
+              "# ========================================"
+          )
+          output.append("# 🇬🇧 ENGLISH")
+          output.append(
+              "# ========================================"
+          )
 
-          output.extend([
-
-              "",
-              "# ========================================",
-              "# 🇬🇧 ENGLISH",
-              "# ========================================",
-
-          ])
-
-
-          # English
           for entry in english_result:
 
               output.append(
@@ -1272,57 +924,42 @@ jobs:
                   entry["url"]
               )
 
-
-          TEMP_OUTPUT.write_text(
-              "\n".join(output)
-              + "\n",
+          TEMP.write_text(
+              "\n".join(output) + "\n",
               encoding="utf-8"
           )
 
+          # ============================================================
+          # FINAL VALIDATION
+          # ============================================================
 
-          # ========================================================
-          # FINAL FILE VALIDATION
-          # ========================================================
-
-          content = TEMP_OUTPUT.read_text(
+          generated = TEMP.read_text(
               encoding="utf-8"
           )
 
-          count = content.count(
+          channel_count = generated.count(
               "#EXTINF"
           )
 
-
-          if count < 800:
+          if channel_count < 800:
 
               raise RuntimeError(
-                  "Generated playlist validation failed."
+                  "Generated playlist is unexpectedly small."
               )
 
-
-          # Only now replace the real playlist.
-          TEMP_OUTPUT.replace(
+          # Only now replace real playlist.
+          TEMP.replace(
               OUTPUT
           )
-
 
           print("")
           print(
-              "SUCCESS:",
-              OUTPUT
-          )
-
-          print(
-              "Channels:",
-              count
+              "SUCCESS - playlist generated:",
+              channel_count,
+              "channels"
           )
 
           PY
-
-
-      # ============================================================
-      # VERIFY
-      # ============================================================
 
       - name: Verify playlist
         run: |
@@ -1331,19 +968,14 @@ jobs:
 
           COUNT=$(grep -c '^#EXTINF' jp-vn.m3u || true)
 
-          echo "Final channel count: $COUNT"
+          echo "Playlist channels: $COUNT"
 
           if [ "$COUNT" -lt 800 ]; then
-            echo "ERROR: Playlist too small."
+            echo "ERROR: playlist too small"
             exit 1
           fi
 
-          echo "Playlist verification OK."
-
-
-      # ============================================================
-      # COMMIT
-      # ============================================================
+          echo "Playlist OK"
 
       - name: Commit and push
         run: |
@@ -1357,7 +989,7 @@ jobs:
 
           if git diff --cached --quiet; then
 
-            echo "No playlist changes."
+            echo "No changes."
 
           else
 
