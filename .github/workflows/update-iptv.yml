@@ -62,28 +62,28 @@ jobs:
 
           # ========================================================
           # JAPAN
-          # KEEP CURRENT WORKING SOURCE
+          # GitHub Contents API
           # ========================================================
 
           JAPAN_URL = (
-              "https://raw.githubusercontent.com/"
-              "ZXArkin/my-personal-iptv/"
-              "refs/heads/iptv-radio/Japan.m3u"
+              "https://api.github.com/"
+              "repos/ZXArkin/my-personal-iptv/"
+              "contents/Japan.m3u?ref=iptv-radio"
           )
 
 
           # ========================================================
           # VIETNAM
-          # KEEP CURRENT WORKING SOURCE
+          # GitHub Contents API
           #
           # VTV channels are removed from this source and replaced
           # by the VTVGo sources below.
           # ========================================================
 
           VIETNAM_URL = (
-              "https://raw.githubusercontent.com/"
-              "ZXArkin/my-personal-iptv/"
-              "refs/heads/iptv-radio/ZXIPTV.m3u"
+              "https://api.github.com/"
+              "repos/ZXArkin/my-personal-iptv/"
+              "contents/ZXIPTV.m3u?ref=iptv-radio"
           )
 
 
@@ -133,10 +133,31 @@ jobs:
               print("DOWNLOAD:")
               print(url)
 
+              headers = {}
+
+              # GitHub Contents API
+              # Ask GitHub to return the actual file contents
+              # instead of JSON/base64 metadata.
+
+              if "api.github.com/repos/" in url:
+
+                  headers.update({
+
+                      "Accept": (
+                          "application/vnd.github.raw+json"
+                      ),
+
+                      "X-GitHub-Api-Version": (
+                          "2022-11-28"
+                      ),
+
+                  })
+
               response = session.get(
                   url,
                   timeout=timeout,
-                  allow_redirects=True
+                  allow_redirects=True,
+                  headers=headers
               )
 
               response.raise_for_status()
@@ -450,6 +471,7 @@ jobs:
 
           print("VTV channels:", len(vtv_out))
 
+
           # ========================================================
           # ENGLISH
           # ========================================================
@@ -591,7 +613,6 @@ jobs:
                   )
 
 
-
               # ----------------------------------------------------
               # MOVIES
               # ----------------------------------------------------
@@ -612,7 +633,6 @@ jobs:
                   return (
                       "🇬🇧 English | Movies"
                   )
-
 
 
               # ----------------------------------------------------
