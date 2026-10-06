@@ -56,24 +56,49 @@ jobs:
         with:
           repository: ZXArkin/my-personal-iptv
           path: zxiptv-source
-          sparse-checkout: |
-            Japan.m3u
-            ZXIPTV.m3u
-          sparse-checkout-cone-mode: false
+          fetch-depth: 1
 
       - name: Verify IPTV source files
+        shell: bash
         run: |
+          set -e
+
           echo "External IPTV source repository:"
           git -C zxiptv-source remote -v
+          echo ""
+          echo "Current source branch:"
+          git -C zxiptv-source branch --show-current || true
           echo ""
           echo "Current source commit:"
           git -C zxiptv-source rev-parse HEAD
           echo ""
+          echo "Repository files:"
+          ls -lah zxiptv-source
+          echo ""
           echo "Checking required files..."
-          test -s zxiptv-source/Japan.m3u
-          test -s zxiptv-source/ZXIPTV.m3u
-          echo "OK: Japan.m3u"
-          echo "OK: ZXIPTV.m3u"
+
+          if [ ! -f zxiptv-source/Japan.m3u ]; then
+            echo "ERROR: Japan.m3u was not checked out."
+            exit 1
+          fi
+
+          if [ ! -s zxiptv-source/Japan.m3u ]; then
+            echo "ERROR: Japan.m3u is empty."
+            exit 1
+          fi
+
+          if [ ! -f zxiptv-source/ZXIPTV.m3u ]; then
+            echo "ERROR: ZXIPTV.m3u was not checked out."
+            exit 1
+          fi
+
+          if [ ! -s zxiptv-source/ZXIPTV.m3u ]; then
+            echo "ERROR: ZXIPTV.m3u is empty."
+            exit 1
+          fi
+
+          echo "OK: Japan.m3u ($(wc -c < zxiptv-source/Japan.m3u) bytes)"
+          echo "OK: ZXIPTV.m3u ($(wc -c < zxiptv-source/ZXIPTV.m3u) bytes)"
 
 
       # ============================================================
