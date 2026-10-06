@@ -68,7 +68,7 @@ jobs:
           JAPAN_URL = (
               "https://raw.githubusercontent.com/"
               "ZXArkin/my-personal-iptv/"
-              "master/Japan.m3u"
+              "refs/heads/iptv-radio/Japan.m3u"
           )
 
 
@@ -83,7 +83,7 @@ jobs:
           VIETNAM_URL = (
               "https://raw.githubusercontent.com/"
               "ZXArkin/my-personal-iptv/"
-              "master/ZXIPTV.m3u"
+              "refs/heads/iptv-radio/ZXIPTV.m3u"
           )
 
 
