@@ -43,6 +43,40 @@ jobs:
 
 
       # ============================================================
+      # IPTV SOURCE REPOSITORY
+      # ============================================================
+
+      # Use the external repository's DEFAULT branch.
+      # Do not hard-code a branch name such as main/master/iptv-radio.
+      # The two required files are checked out directly into
+      # zxiptv-source/.
+
+      - name: Checkout IPTV source repository
+        uses: actions/checkout@v4
+        with:
+          repository: ZXArkin/my-personal-iptv
+          path: zxiptv-source
+          sparse-checkout: |
+            Japan.m3u
+            ZXIPTV.m3u
+          sparse-checkout-cone-mode: false
+
+      - name: Verify IPTV source files
+        run: |
+          echo "External IPTV source repository:"
+          git -C zxiptv-source remote -v
+          echo ""
+          echo "Current source commit:"
+          git -C zxiptv-source rev-parse HEAD
+          echo ""
+          echo "Checking required files..."
+          test -s zxiptv-source/Japan.m3u
+          test -s zxiptv-source/ZXIPTV.m3u
+          echo "OK: Japan.m3u"
+          echo "OK: ZXIPTV.m3u"
+
+
+      # ============================================================
       # CREATE GENERATOR
       # ============================================================
 
@@ -62,28 +96,24 @@ jobs:
 
           # ========================================================
           # JAPAN
-          # GitHub Contents API
+          # Read from the checked-out external repository.
+          # The checkout uses that repository's DEFAULT branch.
           # ========================================================
 
-          JAPAN_URL = (
-              "https://api.github.com/"
-              "repos/ZXArkin/my-personal-iptv/"
-              "contents/Japan.m3u?ref=iptv-radio"
+          JAPAN_FILE = Path(
+              "zxiptv-source/Japan.m3u"
           )
 
 
           # ========================================================
           # VIETNAM
-          # GitHub Contents API
-          #
+          # Read from the checked-out external repository.
           # VTV channels are removed from this source and replaced
           # by the VTVGo sources below.
           # ========================================================
 
-          VIETNAM_URL = (
-              "https://api.github.com/"
-              "repos/ZXArkin/my-personal-iptv/"
-              "contents/ZXIPTV.m3u?ref=iptv-radio"
+          VIETNAM_FILE = Path(
+              "zxiptv-source/ZXIPTV.m3u"
           )
 
 
@@ -127,37 +157,41 @@ jobs:
           # DOWNLOAD
           # ========================================================
 
-          def download(url, timeout=40):
+          def download(source, timeout=40):
 
               print("")
               print("DOWNLOAD:")
-              print(url)
+              print(source)
 
-              headers = {}
+              # Local source file
+              if isinstance(source, Path):
 
-              # GitHub Contents API
-              # Ask GitHub to return the actual file contents
-              # instead of JSON/base64 metadata.
+                  if not source.exists():
 
-              if "api.github.com/repos/" in url:
+                      raise FileNotFoundError(
+                          "Source file not found: "
+                          + str(source)
+                      )
 
-                  headers.update({
+                  text = source.read_text(
+                      encoding="utf-8",
+                      errors="replace"
+                  )
 
-                      "Accept": (
-                          "application/vnd.github.raw+json"
-                      ),
+                  if not text.strip():
 
-                      "X-GitHub-Api-Version": (
-                          "2022-11-28"
-                      ),
+                      raise RuntimeError(
+                          "Source file is empty: "
+                          + str(source)
+                      )
 
-                  })
+                  return text
 
+              # HTTP source
               response = session.get(
-                  url,
+                  source,
                   timeout=timeout,
-                  allow_redirects=True,
-                  headers=headers
+                  allow_redirects=True
               )
 
               response.raise_for_status()
@@ -258,7 +292,7 @@ jobs:
           print("========================================")
 
           japan_text = download(
-              JAPAN_URL
+              JAPAN_FILE
           )
 
           japan_channels = parse_m3u(
@@ -296,7 +330,7 @@ jobs:
           print("========================================")
 
           vietnam_text = download(
-              VIETNAM_URL
+              VIETNAM_FILE
           )
 
           vietnam_channels = parse_m3u(
@@ -471,7 +505,6 @@ jobs:
 
           print("VTV channels:", len(vtv_out))
 
-
           # ========================================================
           # ENGLISH
           # ========================================================
@@ -613,6 +646,7 @@ jobs:
                   )
 
 
+
               # ----------------------------------------------------
               # MOVIES
               # ----------------------------------------------------
@@ -633,6 +667,7 @@ jobs:
                   return (
                       "🇬🇧 English | Movies"
                   )
+
 
 
               # ----------------------------------------------------
