@@ -3770,9 +3770,6 @@ https://amg02713-amg02713c11-amgplt0852.playout.now3.amagi.tv/ts-us-e2-n2/playli
 #EXTINF:-1 tvg-id="HBO.us@East" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/HBO_logo.svg/960px-HBO_logo.svg.png" group-title="🇬🇧 English | Movies",HBO (United States) (720p)
 http://tvsen7.aynascope.net/hbo/index.m3u8
 
-#EXTINF:-1 tvg-id="HBOAsia.sg@HD" tvg-logo="https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d5/HBO_Asia.png/960px-HBO_Asia.png" group-title="🇬🇧 English | Movies",HBO Asia HD (1080p)
-https://2x2.me/yTKXaE
-
 #EXTINF:-1 tvg-id="HBOAsia.sg@SD" tvg-logo="https://thumb.wikimedia.org/wikipedia/commons/thumb/d/d5/HBO_Asia.png/960px-HBO_Asia.png" group-title="🇬🇧 English | Movies",HBO Asia SD (720p) [Geo-blocked]
 https://tinyurl.com/yn3d3rmd
 
@@ -3781,9 +3778,6 @@ http://125.227.210.55:1003/VideoInput/play.ts
 
 #EXTINF:-1 tvg-id="HBOHits.us@East" tvg-logo="https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f0/HBO_Hits_Logo.svg/960px-HBO_Hits_Logo.svg.png" group-title="🇬🇧 English | Movies",HBO Hits (720p)
 http://tvsen7.aynascope.net/hbo2/index.m3u8
-
-#EXTINF:-1 tvg-id="HBOHitsAsia.sg@HD" tvg-logo="https://i.imgur.com/CTjmocc.png" group-title="🇬🇧 English | Movies",HBO Hits Asia HD (1080p)
-https://2x2.me/BbwzPx
 
 #EXTINF:-1 tvg-id="HBOSignatureLatinAmerica.us@SD" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/HBO_Signature.svg/960px-HBO_Signature.svg.png" http-user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36 VLC/3.0.18 LibVLC/3.0.18" group-title="🇬🇧 English | Entertainment",HBO Signature Latin America
 https://bantel-cdn1.iptvperu.tv:1936/btnscrtn/hbosignature.stream/chunks.m3u8
