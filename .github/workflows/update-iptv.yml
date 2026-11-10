@@ -13,1064 +13,252 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-
-      # ============================================================
-      # CHECKOUT
-      # ============================================================
-
       - name: Checkout repository
         uses: actions/checkout@v4
-
-
-      # ============================================================
-      # PYTHON
-      # ============================================================
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
-
-
-      # ============================================================
-      # DEPENDENCIES
-      # ============================================================
+          python-version: "3.12"
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install requests
 
+      # The old external repository ZXArkin/my-personal-iptv returns
+      # GitHub 404. Use the last successfully generated playlist as
+      # a safe local fallback so Japan/Vietnam channels are preserved.
+      # VTV fallback candidates are generated below as in the existing
+      # generator. This removes the broken checkout dependency.
+      - name: Prepare playlist source fallback
+        shell: bash
+        run: |
+          set -e
+          test -s jp-vn.m3u
+          mkdir -p zxiptv-source
+          python - <<'PY'
+          from pathlib import Path
+          import re
 
-      # ============================================================
-      # IPTV SOURCE REPOSITORY
-      # ============================================================
+          text = Path("jp-vn.m3u").read_text(encoding="utf-8", errors="replace")
+          channels = []
+          lines = text.splitlines()
+          i = 0
+          while i < len(lines):
+              if lines[i].strip().startswith("#EXTINF:"):
+                  info = lines[i].strip()
+                  j = i + 1
+                  while j < len(lines) and (not lines[j].strip() or lines[j].strip().startswith("#")):
+                      j += 1
+                  if j < len(lines):
+                      url = lines[j].strip()
+                      if url and not url.startswith("#"):
+                          group = re.search(r'group-title="([^"]*)"', info)
+                          g = group.group(1) if group else ""
+                          if "Japan" in g:
+                              channels.append(("jp", info, url))
+                          elif "Vietnam" in g and "VTV" not in g:
+                              channels.append(("vn", info, url))
+                  i = j
+              i += 1
 
-      # Use the external repository's DEFAULT branch.
-      # Do not hard-code a branch name such as main/master/iptv-radio.
-      # The two required files are checked out directly into
-      # zxiptv-source/.
+          def write_source(kind, filename):
+              rows = [("#EXTM3U", "")]
+              for k, info, url in channels:
+                  if k == kind:
+                      rows.extend([(info, ""), (url, "")])
+              content = "\n".join(x[0] for x in rows if x[0])
+              Path(filename).write_text(content + "\n", encoding="utf-8")
 
-      - name: Checkout IPTV source repository
-        uses: actions/checkout@v4
-        with:
-          repository: ZXArkin/my-personal-iptv
-          path: zxiptv-source
-          fetch-depth: 1
+          write_source("jp", "zxiptv-source/Japan-PH.m3u")
+          write_source("vn", "zxiptv-source/ZXIPTV.m3u")
+          print("Fallback Japan entries:", sum(1 for x in channels if x[0] == "jp"))
+          print("Fallback Vietnam entries:", sum(1 for x in channels if x[0] == "vn"))
+          PY
 
       - name: Verify IPTV source files
         shell: bash
         run: |
           set -e
-
-          echo "External IPTV source repository:"
-          git -C zxiptv-source remote -v
-          echo ""
-          echo "Current source branch:"
-          git -C zxiptv-source branch --show-current || true
-          echo ""
-          echo "Current source commit:"
-          git -C zxiptv-source rev-parse HEAD
-          echo ""
-          echo "Repository files:"
-          ls -lah zxiptv-source
-          echo ""
-          echo "Checking required files..."
-
-          if [ ! -f zxiptv-source/Japan-PH.m3u ]; then
-            echo "ERROR: Japan-PH.m3u was not checked out."
-            exit 1
-          fi
-
-          if [ ! -s zxiptv-source/Japan-PH.m3u ]; then
-            echo "ERROR: Japan-PH.m3u is empty."
-            exit 1
-          fi
-
-          if [ ! -f zxiptv-source/ZXIPTV.m3u ]; then
-            echo "ERROR: ZXIPTV.m3u was not checked out."
-            exit 1
-          fi
-
-          if [ ! -s zxiptv-source/ZXIPTV.m3u ]; then
-            echo "ERROR: ZXIPTV.m3u is empty."
-            exit 1
-          fi
-
-          echo "OK: Japan-PH.m3u ($(wc -c < zxiptv-source/Japan-PH.m3u) bytes)"
-          echo "OK: ZXIPTV.m3u ($(wc -c < zxiptv-source/ZXIPTV.m3u) bytes)"
-
-
-      # ============================================================
-      # CREATE GENERATOR
-      # ============================================================
+          test -s zxiptv-source/Japan-PH.m3u
+          test -s zxiptv-source/ZXIPTV.m3u
+          echo "Japan fallback: $(grep -c '^#EXTINF:' zxiptv-source/Japan-PH.m3u)"
+          echo "Vietnam fallback: $(grep -c '^#EXTINF:' zxiptv-source/ZXIPTV.m3u)"
 
       - name: Create generator
         run: |
           cat > generate.py <<'PYTHON'
-
           import re
           import requests
-
           from pathlib import Path
 
-
-          # ========================================================
-          # SOURCES
-          # ========================================================
-
-          # ========================================================
-          # JAPAN
-          # Read from the checked-out external repository.
-          # The checkout uses that repository's DEFAULT branch.
-          # ========================================================
-
-          JAPAN_FILE = Path(
-              "zxiptv-source/Japan-PH.m3u"
-          )
-
-
-          # ========================================================
-          # VIETNAM
-          # Read from the checked-out external repository.
-          # VTV channels are removed from this source and replaced
-          # by the VTVGo sources below.
-          # ========================================================
-
-          VIETNAM_FILE = Path(
-              "zxiptv-source/ZXIPTV.m3u"
-          )
-
-
-          # ========================================================
-          # ENGLISH
-          # KEEP CURRENT WORKING SOURCE
-          # ========================================================
-
-          ENGLISH_URL = (
-              "https://iptv-org.github.io/iptv/"
-              "languages/eng.m3u"
-          )
-
-
+          JAPAN_FILE = Path("zxiptv-source/Japan-PH.m3u")
+          VIETNAM_FILE = Path("zxiptv-source/ZXIPTV.m3u")
+          ENGLISH_URL = "https://iptv-org.github.io/iptv/languages/eng.m3u"
           OUTPUT = Path("jp-vn.m3u")
 
-
-          # ========================================================
-          # HTTP SESSION
-          # ========================================================
-
           session = requests.Session()
-
           session.headers.update({
-
-              "User-Agent": (
-                  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                  "AppleWebKit/537.36 (KHTML, like Gecko) "
-                  "Chrome/140.0 Safari/537.36"
-              ),
-
-              "Accept-Language": (
-                  "vi-VN,vi;q=0.9,"
-                  "en-US;q=0.8,en;q=0.7"
-              ),
-
+              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/140.0 Safari/537.36",
+              "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
           })
 
-
-          # ========================================================
-          # DOWNLOAD
-          # ========================================================
-
           def download(source, timeout=40):
-
-              print("")
-              print("DOWNLOAD:")
-              print(source)
-
-              # Local source file
               if isinstance(source, Path):
-
-                  if not source.exists():
-
-                      raise FileNotFoundError(
-                          "Source file not found: "
-                          + str(source)
-                      )
-
-                  text = source.read_text(
-                      encoding="utf-8",
-                      errors="replace"
-                  )
-
+                  text = source.read_text(encoding="utf-8", errors="replace")
                   if not text.strip():
-
-                      raise RuntimeError(
-                          "Source file is empty: "
-                          + str(source)
-                      )
-
+                      raise RuntimeError(f"Source file is empty: {source}")
                   return text
-
-              # HTTP source
-              response = session.get(
-                  source,
-                  timeout=timeout,
-                  allow_redirects=True
-              )
-
+              response = session.get(source, timeout=timeout, allow_redirects=True)
               response.raise_for_status()
-
               return response.text
 
-
-          # ========================================================
-          # M3U PARSER
-          # ========================================================
-
           def parse_m3u(text):
-
               lines = text.splitlines()
-
               channels = []
-
               i = 0
-
               while i < len(lines):
-
                   line = lines[i].strip()
-
                   if line.startswith("#EXTINF:"):
-
                       info = line
-                      url = None
-
                       j = i + 1
-
                       while j < len(lines):
-
                           candidate = lines[j].strip()
-
-                          if (
-                              candidate
-                              and not candidate.startswith("#")
-                          ):
-
-                              url = candidate
+                          if candidate and not candidate.startswith("#"):
+                              channels.append((info, candidate))
                               break
-
                           j += 1
-
-                      if url:
-
-                          channels.append(
-                              (info, url)
-                          )
-
                       i = j
-
                   i += 1
-
               return channels
 
-
-          # ========================================================
-          # SET GROUP
-          # ========================================================
-
           def set_group(info, group):
+              if re.search(r'group-title="[^"]*"', info, flags=re.IGNORECASE):
+                  return re.sub(r'group-title="[^"]*"', f'group-title="{group}"', info, count=1, flags=re.IGNORECASE)
+              return info.replace("#EXTINF:-1", f'#EXTINF:-1 group-title="{group}"', 1)
 
-              if re.search(
-                  r'group-title="[^"]*"',
-                  info,
-                  flags=re.IGNORECASE
-              ):
+          print("Loading Japan fallback...")
+          japan_channels = [(set_group(i, "🇯🇵 Japan"), u) for i, u in parse_m3u(download(JAPAN_FILE))]
+          print("Japan channels:", len(japan_channels))
 
-                  info = re.sub(
-                      r'group-title="[^"]*"',
-                      'group-title="' + group + '"',
-                      info,
-                      count=1,
-                      flags=re.IGNORECASE
-                  )
-
-              else:
-
-                  info = info.replace(
-                      "#EXTINF:-1",
-                      '#EXTINF:-1 group-title="'
-                      + group
-                      + '"',
-                      1
-                  )
-
-              return info
-
-
-          # ========================================================
-          # JAPAN
-          # ========================================================
-
-          print("")
-          print("========================================")
-          print("JAPAN")
-          print("========================================")
-
-          japan_text = download(
-              JAPAN_FILE
-          )
-
-          japan_channels = parse_m3u(
-              japan_text
-          )
-
-          japan_out = []
-
-
-          for info, url in japan_channels:
-
-              info = set_group(
-                  info,
-                  "🇯🇵 Japan"
-              )
-
-              japan_out.append(
-                  (info, url)
-              )
-
-
-          print(
-              "Japan channels:",
-              len(japan_out)
-          )
-
-
-          # ========================================================
-          # VIETNAM
-          # ========================================================
-
-          print("")
-          print("========================================")
-          print("VIETNAM")
-          print("========================================")
-
-          vietnam_text = download(
-              VIETNAM_FILE
-          )
-
-          vietnam_channels = parse_m3u(
-              vietnam_text
-          )
-
-
-          # Detect VTV1-VTV10
-
-          vtv_pattern = re.compile(
-              r"\bVTV\s*(?:1|2|3|4|5|6|7|8|9|10)\b",
-              re.IGNORECASE
-          )
-
-
-          vietnam_out = []
-
-
-          for info, url in vietnam_channels:
-
-              name = (
-                  info.split(",")[-1]
-                  .strip()
-              )
-
-
-              # Remove VTV from the old source.
-              # VTV will be inserted from VTVGo below.
-
+          print("Loading Vietnam fallback...")
+          vtv_pattern = re.compile(r"\bVTV\s*(?:1|2|3|4|5|6|7|8|9|10)\b", re.IGNORECASE)
+          vietnam_channels = []
+          for info, url in parse_m3u(download(VIETNAM_FILE)):
+              name = info.split(",")[-1].strip()
               if vtv_pattern.search(name):
-
                   continue
-
-
-              info = set_group(
-                  info,
-                  "🇻🇳 Vietnam"
-              )
-
-
-              vietnam_out.append(
-                  (info, url)
-              )
-
-
-          print(
-              "Vietnam non-VTV:",
-              len(vietnam_out)
-          )
-
-
-          # ========================================================
-          # VTV - AUTOMATIC FALLBACK
-          # GitHub tests candidates, but a failed test NEVER removes VTV.
-          # ========================================================
-
-          print("")
-          print("========================================")
-          print("VTV AUTOMATIC FALLBACK")
-          print("========================================")
+              vietnam_channels.append((set_group(info, "🇻🇳 Vietnam"), url))
+          print("Vietnam non-VTV channels:", len(vietnam_channels))
 
           VTV_CANDIDATES = {
-
-              "VTV1": [
-                  "http://live.tv360.vn/manifest/VTV1_HD/playlist_1080p.m3u8",
-                  "https://live-a.fptplay53.net/live/media/vtv1/live247-hls-avc/index.m3u8",
-                  "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv1-manifest.m3u8",
-              ],
-
-              "VTV2": [
-                  "http://live.tv360.vn/manifest/vtv2/playlist_VTV2-1080-3_6M.m3u8",
-                  "https://live-a.fptplay53.net/live/media/vtv2/live247-hls-avc/index.m3u8",
-                  "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv2-manifest.m3u8",
-              ],
-
-              "VTV3": [
-                  "http://live.tv360.vn/manifest/VTV3/playlist_1080p-5M.m3u8",
-                  "https://live-a.fptplay53.net/live/media/vtv3/live247-hls-avc/index.m3u8",
-                  "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv3-manifest.m3u8",
-              ],
-
-              "VTV4": [
-                  "https://e3.endpoint.cdn.sctvonline.vn/hls/vtv4/index.m3u8|Referer=https://sctvonline.vn/",
-                  "https://live-a.fptplay53.net/live/media/vtv4/live247-hls-avc/index.m3u8",
-                  "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv4-manifest.m3u8",
-              ],
-
-              "VTV5": [
-                  "https://liveh12.vtvcab.vn/hls/ONVTV5_CL/04.m3u8",
-                  "https://live-a.fptplay53.net/live/media/vtv5/live247-hls-avc/index.m3u8",
-                  "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv5-manifest.m3u8",
-              ],
-
-              "VTV6": [
-                  "http://live.tv360.vn/manifest/VTV6_HD/playlist_1080p.m3u8",
-                  "https://live-a.fptplay53.net/live/media/vtv6/live247-hls-avc/index.m3u8",
-                  "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv6-manifest.m3u8",
-              ],
-
-              "VTV7": [
-                  "https://e2.endpoint.cdn.sctvonline.vn/hls/vtv7/index.m3u8|Referer=https://sctvonline.vn/",
-                  "https://live-a.fptplay53.net/live/media/vtv7/live247-hls-avc/index.m3u8",
-                  "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv7-manifest.m3u8",
-              ],
-
-              "VTV8": [
-                  "https://e3.endpoint.cdn.sctvonline.vn/hls/vtv8/index.m3u8|Referer=https://sctvonline.vn/",
-                  "https://live-a.fptplay53.net/live/media/vtv8/live247-hls-avc/index.m3u8",
-                  "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv8-manifest.m3u8",
-              ],
-
-              "VTV9": [
-                  "https://e2.endpoint.cdn.sctvonline.vn/hls/vtv9/index.m3u8|Referer=https://sctvonline.vn/",
-                  "https://live-a.fptplay53.net/live/media/vtv9/live247-hls-avc/index.m3u8",
-                  "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv9-manifest.m3u8",
-              ],
+              "VTV1": ["http://live.tv360.vn/manifest/VTV1_HD/playlist_1080p.m3u8", "https://live-a.fptplay53.net/live/media/vtv1/live247-hls-avc/index.m3u8", "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv1-manifest.m3u8"],
+              "VTV2": ["http://live.tv360.vn/manifest/vtv2/playlist_VTV2-1080-3_6M.m3u8", "https://live-a.fptplay53.net/live/media/vtv2/live247-hls-avc/index.m3u8", "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv2-manifest.m3u8"],
+              "VTV3": ["http://live.tv360.vn/manifest/VTV3/playlist_1080p-5M.m3u8", "https://live-a.fptplay53.net/live/media/vtv3/live247-hls-avc/index.m3u8", "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv3-manifest.m3u8"],
+              "VTV4": ["https://e3.endpoint.cdn.sctvonline.vn/hls/vtv4/index.m3u8|Referer=https://sctvonline.vn/", "https://live-a.fptplay53.net/live/media/vtv4/live247-hls-avc/index.m3u8", "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv4-manifest.m3u8"],
+              "VTV5": ["https://liveh12.vtvcab.vn/hls/ONVTV5_CL/04.m3u8", "https://live-a.fptplay53.net/live/media/vtv5/live247-hls-avc/index.m3u8", "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv5-manifest.m3u8"],
+              "VTV6": ["http://live.tv360.vn/manifest/VTV6_HD/playlist_1080p.m3u8", "https://live-a.fptplay53.net/live/media/vtv6/live247-hls-avc/index.m3u8", "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv6-manifest.m3u8"],
+              "VTV7": ["https://e2.endpoint.cdn.sctvonline.vn/hls/vtv7/index.m3u8|Referer=https://sctvonline.vn/", "https://live-a.fptplay53.net/live/media/vtv7/live247-hls-avc/index.m3u8", "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv7-manifest.m3u8"],
+              "VTV8": ["https://e3.endpoint.cdn.sctvonline.vn/hls/vtv8/index.m3u8|Referer=https://sctvonline.vn/", "https://live-a.fptplay53.net/live/media/vtv8/live247-hls-avc/index.m3u8", "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv8-manifest.m3u8"],
+              "VTV9": ["https://e2.endpoint.cdn.sctvonline.vn/hls/vtv9/index.m3u8|Referer=https://sctvonline.vn/", "https://live-a.fptplay53.net/live/media/vtv9/live247-hls-avc/index.m3u8", "https://vtvgolive-failover.vtvdigital.vn/vtvgo/vtv9-manifest.m3u8"],
           }
 
           def test_hls(url):
               test_url = url.split("|", 1)[0]
               try:
-                  response = session.get(
-                      test_url,
-                      timeout=12,
-                      allow_redirects=True,
-                      headers={
-                          "Accept": "*/*",
-                          "Referer": "https://sctvonline.vn/",
-                      },
-                  )
-                  if response.status_code >= 400:
-                      return False
-                  body = response.text[:20000]
-                  return "#EXTM3U" in body or "#EXT-X-" in body
+                  response = session.get(test_url, timeout=12, allow_redirects=True, headers={"Accept": "*/*", "Referer": "https://sctvonline.vn/"})
+                  return response.status_code < 400 and ("#EXTM3U" in response.text[:20000] or "#EXT-X-" in response.text[:20000])
               except Exception as exc:
                   print("TEST FAILED:", test_url, type(exc).__name__)
                   return False
 
-          vtv_out = []
-
+          vtv_channels = []
           for channel, candidates in VTV_CANDIDATES.items():
-              chosen = None
-
-              for candidate in candidates:
-                  print("Testing", channel, "=>", candidate)
-
-                  if test_hls(candidate):
-                      chosen = candidate
-                      print("WORKING CANDIDATE:", channel, "=>", candidate)
-                      break
-
-              # GitHub may be unable to reach a stream that APTV can reach.
-              # Therefore a failed GitHub test must NOT delete the channel.
-              if chosen is None:
-                  chosen = candidates[0]
-                  print("NO GITHUB VALIDATION - USING FALLBACK:", channel, "=>", chosen)
-
-              info = (
-                  '#EXTINF:-1 '
-                  'tvg-id="' + channel + '" '
-                  'group-title="🇻🇳 Vietnam | VTV",'
-                  + channel
-              )
-
-              vtv_out.append((info, chosen))
-
-          if len(vtv_out) != 9:
-              raise RuntimeError(
-                  "VTV safety check failed: expected 9 channels, got "
-                  + str(len(vtv_out))
-              )
-
-          print("VTV channels:", len(vtv_out))
-
-          # ========================================================
-          # ENGLISH
-          # ========================================================
-
-          print("")
-          print("========================================")
-          print("ENGLISH")
-          print("========================================")
-
-
-          english_text = download(
-              ENGLISH_URL
-          )
-
-
-          english_channels = parse_m3u(
-              english_text
-          )
-
-
-          # ========================================================
-          # BLOCKED CONTENT
-          # ========================================================
-
-          blocked = [
-
-              "pluto",
-              "adult",
-              "porn",
-              "xxx",
-              "religious",
-              "shopping",
-              "weather",
-              "business",
-              "legislative",
-              "gambling",
-              "casino",
-
-          ]
-
-
-          # ========================================================
-          # ENGLISH GROUP
-          # ========================================================
-
-          def english_group(
-              name,
-              info
-          ):
-
-              text = (
-                  name
-                  + " "
-                  + info
-              ).lower()
-
-
-              # ----------------------------------------------------
-              # KIDS
-              # ----------------------------------------------------
-
-              if any(
-                  x in text
-                  for x in [
-
-                      "kids",
-                      "children",
-                      "child",
-                      "baby",
-                      "preschool",
-                      "nick jr",
-                      "nickelodeon",
-                      "cartoonito",
-
-                  ]
-              ):
-
-                  return (
-                      "🇬🇧 English | Kids"
-                  )
-
-
-              # ----------------------------------------------------
-              # ANIMATION
-              # ----------------------------------------------------
-
-              if any(
-                  x in text
-                  for x in [
-
-                      "animation",
-                      "anime",
-                      "cartoon",
-
-                  ]
-              ):
-
-                  return (
-                      "🇬🇧 English | Animation"
-                  )
-
-
-              # ----------------------------------------------------
-              # FAMILY
-              # ----------------------------------------------------
-
-              if any(
-                  x in text
-                  for x in [
-
-                      "family",
-
-                  ]
-              ):
-
-                  return (
-                      "🇬🇧 English | Family"
-                  )
-
-
-              # ----------------------------------------------------
-              # EDUCATION
-              # ----------------------------------------------------
-
-              if any(
-                  x in text
-                  for x in [
-
-                      "education",
-                      "educational",
-                      "learning",
-                      "knowledge",
-
-                  ]
-              ):
-
-                  return (
-                      "🇬🇧 English | Education"
-                  )
-
-
-
-              # ----------------------------------------------------
-              # MOVIES
-              # ----------------------------------------------------
-
-              if any(
-                  x in text
-                  for x in [
-
-                      "movie",
-                      "movies",
-                      "film",
-                      "films",
-                      "cinema",
-
-                  ]
-              ):
-
-                  return (
-                      "🇬🇧 English | Movies"
-                  )
-
-
-
-              # ----------------------------------------------------
-              # MUSIC
-              # ----------------------------------------------------
-
-              if any(
-                  x in text
-                  for x in [
-
-                      "music",
-                      "mtv",
-                      "concert",
-                      "vevo",
-
-                  ]
-              ):
-
-                  return (
-                      "🇬🇧 English | Music"
-                  )
-
-
-              # ----------------------------------------------------
-              # ENTERTAINMENT
-              # ----------------------------------------------------
-
-              if any(
-                  x in text
-                  for x in [
-
-                      "entertainment",
-                      "comedy",
-                      "reality",
-                      "lifestyle",
-                      "celebrity",
-
-                  ]
-              ):
-
-                  return (
-                      "🇬🇧 English | Entertainment"
-                  )
-
-
-              # ----------------------------------------------------
-              # SPORTS
-              # ----------------------------------------------------
-
-              if any(
-                  x in text
-                  for x in [
-
-                      "sport",
-                      "sports",
-                      "football",
-                      "soccer",
-                      "basketball",
-                      "tennis",
-                      "golf",
-                      "baseball",
-                      "racing",
-                      "motorsport",
-                      "wrestling",
-
-                  ]
-              ):
-
-                  return (
-                      "🇬🇧 English | Sports"
-                  )
-
-
-              # ----------------------------------------------------
-              # NEWS
-              # ----------------------------------------------------
-
-              if any(
-                  x in text
-                  for x in [
-
-                      "news",
-                      "bbc news",
-                      "cnn",
-                      "sky news",
-                      "al jazeera english",
-
-                  ]
-              ):
-
-                  return (
-                      "🇬🇧 English | News"
-                  )
-
-
-              # ----------------------------------------------------
-              # DEFAULT
-              # ----------------------------------------------------
-
-              return (
-                  "🇬🇧 English | Entertainment"
-              )
-
-
-          # ========================================================
-          # BUILD ENGLISH
-          # ========================================================
+              chosen = next((candidate for candidate in candidates if test_hls(candidate)), candidates[0])
+              info = f'#EXTINF:-1 tvg-id="{channel}" group-title="🇻🇳 Vietnam | VTV",{channel}'
+              vtv_channels.append((info, chosen))
+          print("VTV channels:", len(vtv_channels))
+
+          print("Downloading English channels...")
+          english_channels = parse_m3u(download(ENGLISH_URL))
+          blocked = ["pluto", "adult", "porn", "xxx", "religious", "shopping", "weather", "business", "legislative", "gambling", "casino"]
+
+          def english_group(name, info):
+              text = (name + " " + info).lower()
+              if any(x in text for x in ["kids", "children", "child", "baby", "preschool", "nick jr", "nickelodeon", "cartoonito"]):
+                  return "🇬🇧 English | Kids"
+              if any(x in text for x in ["animation", "anime", "cartoon"]):
+                  return "🇬🇧 English | Animation"
+              if "family" in text:
+                  return "🇬🇧 English | Family"
+              if any(x in text for x in ["education", "educational", "learning", "knowledge"]):
+                  return "🇬🇧 English | Education"
+              if any(x in text for x in ["movie", "movies", "film", "films", "cinema"]):
+                  return "🇬🇧 English | Movies"
+              if any(x in text for x in ["music", "mtv", "concert", "vevo"]):
+                  return "🇬🇧 English | Music"
+              if any(x in text for x in ["entertainment", "comedy", "reality", "lifestyle", "celebrity"]):
+                  return "🇬🇧 English | Entertainment"
+              if any(x in text for x in ["sport", "sports", "football", "soccer", "basketball", "tennis", "golf", "baseball", "racing", "motorsport", "wrestling"]):
+                  return "🇬🇧 English | Sports"
+              if any(x in text for x in ["news", "bbc news", "cnn", "sky news", "al jazeera english"]):
+                  return "🇬🇧 English | News"
+              return "🇬🇧 English | Entertainment"
 
           english_out = []
-
-
           for info, url in english_channels:
-
-              name = (
-                  info.split(",")[-1]
-                  .strip()
-              )
-
-
-              text = (
-                  name
-                  + " "
-                  + info
-              ).lower()
-
-
-              if any(
-                  x in text
-                  for x in blocked
-              ):
-
+              name = info.split(",")[-1].strip()
+              if any(x in (name + " " + info).lower() for x in blocked):
                   continue
+              english_out.append((set_group(info, english_group(name, info)), url))
+          print("English channels:", len(english_out))
 
-
-              group = english_group(
-                  name,
-                  info
-              )
-
-
-              info = set_group(
-                  info,
-                  group
-              )
-
-
-              english_out.append(
-                  (
-                      info,
-                      url
-                  )
-              )
-
-
-          print(
-              "English channels:",
-              len(english_out)
-          )
-
-
-          # ========================================================
-          # SAFETY CHECKS
-          #
-          # Protect the three working sources.
-          # ========================================================
-
-          print("")
-          print("========================================")
-          print("SAFETY CHECK")
-          print("========================================")
-
-
-          if len(japan_out) < 30:
-
-              raise RuntimeError(
-                  "Japan source unexpectedly "
-                  "dropped below 30 channels."
-              )
-
-
-          if len(vietnam_out) < 50:
-
-              raise RuntimeError(
-                  "Vietnam source unexpectedly "
-                  "dropped below 50 channels."
-              )
-
-
+          if len(japan_channels) < 30:
+              raise RuntimeError(f"Japan source unexpectedly dropped below 30 channels: {len(japan_channels)}")
+          if len(vietnam_channels) < 50:
+              raise RuntimeError(f"Vietnam source unexpectedly dropped below 50 channels: {len(vietnam_channels)}")
           if len(english_out) < 500:
+              raise RuntimeError(f"English source unexpectedly dropped below 500 channels: {len(english_out)}")
 
-              raise RuntimeError(
-                  "English source unexpectedly "
-                  "dropped below 500 channels."
-              )
+          output = ["#EXTM3U", "# IPTV JP + VN + VTV + EN", "# Japan source preserved", "# Vietnam non-VTV source preserved", "# VTV automatic fallback", "# English source preserved", ""]
 
-
-          # ========================================================
-          # BUILD FINAL PLAYLIST
-          # ========================================================
-
-          output = [
-
-              "#EXTM3U",
-
-              "# IPTV JP + VN + VTV + EN",
-
-              "# Japan source preserved",
-
-              "# Vietnam non-VTV source preserved",
-
-              "# VTV automatic fallback",
-
-              "# English source preserved",
-
-              "",
-          ]
-
-
-          def add_channels(
-              channels
-          ):
-
+          def add_channels(channels):
               for info, url in channels:
+                  output.extend([info, url, ""])
 
-                  output.append(
-                      info
-                  )
+          add_channels(japan_channels)
+          add_channels(vietnam_channels)
+          add_channels(vtv_channels)
+          add_channels(english_out)
 
-                  output.append(
-                      url
-                  )
-
-                  output.append(
-                      ""
-                  )
-
-
-          # ========================================================
-          # JAPAN
-          # ========================================================
-
-          add_channels(
-              japan_out
-          )
-
-
-          # ========================================================
-          # VIETNAM
-          # ========================================================
-
-          add_channels(
-              vietnam_out
-          )
-
-
-          # ========================================================
-          # VTV
-          # ========================================================
-
-          add_channels(
-              vtv_out
-          )
-
-
-          # ========================================================
-          # ENGLISH
-          # ========================================================
-
-          add_channels(
-              english_out
-          )
-
-
-          # ========================================================
-          # WRITE PLAYLIST
-          # ========================================================
-
-          OUTPUT.write_text(
-              "\n".join(output),
-              encoding="utf-8"
-          )
-
-
-          # ========================================================
-          # RESULT
-          # ========================================================
-
-          total = (
-
-              len(japan_out)
-
-              + len(vietnam_out)
-
-              + len(vtv_out)
-
-              + len(english_out)
-
-          )
-
-
-          print("")
-          print("========================================")
-          print("FINAL PLAYLIST")
-          print("========================================")
-
-
-          print(
-              "Japan:",
-              len(japan_out)
-          )
-
-
-          print(
-              "Vietnam:",
-              len(vietnam_out)
-          )
-
-
-          print(
-              "VTV:",
-              len(vtv_out)
-          )
-
-
-          print(
-              "English:",
-              len(english_out)
-          )
-
-
-          print(
-              "TOTAL:",
-              total
-          )
-
-
-          print(
-              "========================================"
-          )
-
+          OUTPUT.write_text("\n".join(output), encoding="utf-8")
+          total = len(japan_channels) + len(vietnam_channels) + len(vtv_channels) + len(english_out)
+          print("FINAL COUNTS:", {"Japan": len(japan_channels), "Vietnam": len(vietnam_channels), "VTV": len(vtv_channels), "English": len(english_out), "TOTAL": total})
           PYTHON
 
-
-      # ============================================================
-      # GENERATE PLAYLIST
-      # ============================================================
-
       - name: Generate IPTV playlist
+        run: python generate.py
+
+      - name: Validate generated playlist
+        shell: bash
         run: |
-          python generate.py
-
-
-      # ============================================================
-      # COMMIT
-      # ============================================================
+          set -e
+          test -s jp-vn.m3u
+          grep -q '^#EXTM3U' jp-vn.m3u
+          grep -q '🇯🇵 Japan' jp-vn.m3u
+          grep -q '🇻🇳 Vietnam' jp-vn.m3u
+          grep -q '🇬🇧 English' jp-vn.m3u
+          echo "Playlist validation passed."
 
       - name: Commit playlist
         run: |
-
-          git config user.name \
-            "github-actions[bot]"
-
-          git config user.email \
-            "41898282+github-actions[bot]@users.noreply.github.com"
-
-
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add jp-vn.m3u
-
-
           if git diff --cached --quiet; then
-
             echo "No playlist changes."
-
           else
-
-            git commit \
-              -m "Update IPTV playlist"
-
+            git commit -m "Update IPTV playlist"
             git push
-
           fi
