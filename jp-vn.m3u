@@ -3632,6 +3632,9 @@ https://1593604785.rsc.cdn77.org/FTF/FTF_SCTE.m3u8
 #EXTINF:-1 tvg-id="FuboSportsNetwork.us@SD" tvg-logo="https://i.imgur.com/qFNRJLb.png" group-title="🇬🇧 English | Sports",Fubo Sports Network (1080p)
 https://dnf08l6u6uxnz.cloudfront.net/master.m3u8
 
+#EXTINF:-1 tvg-id="FuboSportsNetwork.us@HD" tvg-logo="https://i.imgur.com/qFNRJLb.png" group-title="🇬🇧 English | Sports",Fubo Sports Network HD (1080p)
+http://107.167.16.138/fubosportsnetwork/index.m3u8?token=test
+
 #EXTINF:-1 tvg-id="FUELTV.pt@EMEA" tvg-logo="https://i.imgur.com/I8mviBy.png" group-title="🇬🇧 English | Sports",FUEL TV (1080p)
 https://amg01074-fueltv-fueltvemeaen-rakuten-b6j62.amagi.tv/hls/amagi_hls_data_rakutenAA-fueltvemeaen/CDN/master.m3u8
 
@@ -4079,8 +4082,11 @@ https://content.jwplatform.com/live/broadcast/oe7UD7Ag.m3u8
 #EXTINF:-1 tvg-id="JibekJoly.kz@SD" tvg-logo="https://i.imgur.com/SqyXtgK.png" group-title="🇬🇧 English | Entertainment",Jibek Joly (576p)
 https://fs.uplink.kz/jibek_joly/mono.m3u8?token=onlinetv
 
-#EXTINF:-1 tvg-id="JimJam.hu@SD" tvg-logo="https://i.imgur.com/ODhkYyx.png" http-user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" group-title="🇬🇧 English | Kids",JimJam
+#EXTINF:-1 tvg-id="JimJam.hu@SD" tvg-logo="https://i.imgur.com/ODhkYyx.png" http-user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" group-title="🇬🇧 English | Kids",JimJam (Hungary)
 http://88.212.7.14/live/jim_jam_hun/index.m3u8
+
+#EXTINF:-1 tvg-id="JimJam.ro@SD" tvg-logo="https://i.imgur.com/ODhkYyx.png" http-referrer="https://canale-tv.net/" group-title="🇬🇧 English | Kids",JimJam (Romania) (576p)
+https://rundle.tv/proxy5.php?src=https%3A%2F%2Fsaruman1.tharen001.cfd%2Fjimy%2Fusergenq3n0lz7kr-got.htm
 
 #EXTINF:-1 tvg-id="JimJamEurope.uk@SD" tvg-logo="https://i.imgur.com/ODhkYyx.png" group-title="🇬🇧 English | Kids",JimJam Europe (720p)
 http://212.5.144.156:8080/jimjam/index.m3u8
@@ -5351,6 +5357,9 @@ https://d11k1mnrgfposz.cloudfront.net/playlist.m3u8
 #EXTINF:-1 tvg-id="PhillyCAM.us@SD" tvg-logo="https://i.imgur.com/ENOr31n.png" group-title="🇬🇧 English | Entertainment",PhillyCAM (720p)
 https://livestream.telvue.com/phillycam1/f7b44cfafd5c52223d5498196c8a2e7b.sdp/playlist.m3u8
 
+#EXTINF:-1 tvg-id="PickleballNow.in@SD" tvg-logo="https://jiotvimages.cdn.jio.com/dare_images/images/Pickleball_Now.png" group-title="🇬🇧 English | Sports",Pickleball Now (720p) [Geo-blocked]
+https://distro-timesgroup.vgcdn.net/vglive-sk-843549/playlist.m3u8
+
 #EXTINF:-1 tvg-id="PixLTV.us@SD" tvg-logo="https://i.imgur.com/ysRh3Nl.png" group-title="🇬🇧 English | Entertainment",PixL TV (720p)
 https://frndlymsl.akamaized.net/hls/live/2006426/pixlmsl/pixlmsl/playlist.m3u8?hdnts=st=1606053234~exp=3216054041~acl=*~hmac=208d261d9f98d76a5ac30aa2ce51751f88ee50cfc24812b7cbea8b0397489a07
 
@@ -5969,6 +5978,12 @@ https://cdn.stmify.com/out/v1/SKY_SPORTS_PREMIER_LEAGUE/index.m3u8
 #EXTINF:-1 tvg-id="SkySportsNFL.uk@SD" tvg-logo="https://d2n0069hmnqmmx.cloudfront.net/epgdata/1.0/newchanlogos/512/512/skychb1333.png" http-referrer="https://stmify.com/" http-user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36" group-title="🇬🇧 English | Sports",Sky Sports NFL (720p)
 https://cdn.stmify.com/out/v1/SKY_SPORTS_ACTION/index.m3u8
 
+#EXTINF:-1 tvg-id="SkyShowtime1.ro@HD" tvg-logo="https://static.wikia.nocookie.net/logopedia/images/a/a0/SkyShowtime_1.svg/revision/latest?cb=20220920074626" group-title="🇬🇧 English | Movies",SkyShowtime 1
+https://rundle.tv/proxy5.php?src=https%3A%2F%2Fthor1.syndula001.cfd%2Fschi1%2Fusergendxn430rnd-got.htm
+
+#EXTINF:-1 tvg-id="SkyShowtime2.ro@HD" tvg-logo="https://static.wikia.nocookie.net/logopedia/images/0/09/SkyShowtime_2.svg/revision/latest?cb=20220920074646" group-title="🇬🇧 English | Movies",SkyShowtime 2
+https://rundle.tv/proxy5.php?src=https%3A%2F%2Fthor1.syndula001.cfd%2Fschi2%2Fusergendxj85trnd-got.htm
+
 #EXTINF:-1 tvg-id="SLOCountyChannel21.us@SD" tvg-logo="https://i.imgur.com/CyQ472C.png" group-title="🇬🇧 English | Entertainment",SLO County Channel 21 (360p)
 https://agp-nimble.streamguys1.com/SLOC/SLOC/playlist.m3u8
 
@@ -6317,9 +6332,6 @@ https://d1b16tvvxk3tnu.cloudfront.net/TED.m3u8
 #EXTINF:-1 tvg-id="TeenMom.us@SD" tvg-logo="https://i.imgur.com/8o3ClCV.png" group-title="🇬🇧 English | Entertainment",Teen Mom (United States)
 https://jmp2.uk/plu-6127e12ed140e900077e7b6f.m3u8
 
-#EXTINF:-1 tvg-id="TeenNick.il@SD" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/b/bd/TeenNick_2019_logo.svg/960px-TeenNick_2019_logo.svg.png" group-title="🇬🇧 English | Kids",TeenNick (Israel) (406p)
-http://89.33.29.115:8080/TeenNick/index.m3u8
-
 #EXTINF:-1 tvg-id="TeenNick.pl@SD" tvg-logo="https://i.imgur.com/KZq73CE.png" group-title="🇬🇧 English | Kids",TeenNick (Poland) (576i)
 http://92.114.85.87:8010/play/a009/index.m3u8
 
@@ -6665,7 +6677,7 @@ https://channels.trace.plus/Traceprod/AFRICA_EN_hd/index.m3u8
 #EXTINF:-1 tvg-id="TraceSportStars.fr@HD" tvg-logo="https://i.imgur.com/FabFP5A.png" group-title="🇬🇧 English | Sports",Trace Sport Stars (1080p)
 https://lightning-tracesport-samsungau.amagi.tv/playlist.m3u8
 
-#EXTINF:-1 tvg-id="TraceSportStars.fr@SD" tvg-logo="https://i.imgur.com/FabFP5A.png" group-title="🇬🇧 English | Sports",Trace Sport Stars SD
+#EXTINF:-1 tvg-id="TraceSportStars.fr@SD" tvg-logo="https://i.imgur.com/FabFP5A.png" http-referrer="https://trace.plus" http-user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36" group-title="🇬🇧 English | Sports",Trace Sport Stars SD
 https://channels.trace.plus/Traceprod/TRACE_SPORT_STARS_sd/index.m3u8
 
 #EXTINF:-1 tvg-id="TraceUK.uk@HD" tvg-logo="https://a.jsrdn.com/hls/23073/trace-uk/logo_20240627_183320_70.png" group-title="🇬🇧 English | Music",Trace UK (1080p)
