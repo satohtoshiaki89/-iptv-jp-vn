@@ -1898,8 +1898,8 @@ https://a-cdn.herringnetwork.com/affiliate/awee/playlist.m3u8
 #EXTINF:-1 tvg-id="AWEPlus.us@KPVMLD" tvg-logo="https://i.imgur.com/hL8i7Ar.png" group-title="🇬🇧 English | Entertainment",AWE Plus KPVM-LD (484p)
 https://2-fss-2.streamhoster.com/pl_120/206858-4404552-1/playlist.m3u8
 
-#EXTINF:-1 tvg-id="AXN.es@SD" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/AXN_logo_%282015%29.svg/960px-AXN_logo_%282015%29.svg.png" group-title="🇬🇧 English | Movies",AXN (Spain)
-http://sultanios.alwaysdata.net/vavo.php?ID=4238619703
+#EXTINF:-1 tvg-id="AXN.es@SD" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/AXN_logo_%282015%29.svg/960px-AXN_logo_%282015%29.svg.png" group-title="🇬🇧 English | Movies",AXN (Spain) (1080p)
+https://vuvuu-geil-m3u8.yaskar661.workers.dev/?url=https%3A%2F%2Fgeil.to%2Flive%2Fplay%2F4238619703
 
 #EXTINF:-1 tvg-id="AXNBlack.us@CzechRepublic" tvg-logo="https://i.imgur.com/Peo1QiZ.png" http-user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.3" group-title="🇬🇧 English | Movies",AXN Black (United States) Czech Republic
 http://88.212.15.50/live/test_black/playlist.m3u8
@@ -2966,7 +2966,7 @@ https://10gb1.acangroup.org:1929/crtv/crtv_all/playlist.m3u8
 #EXTINF:-1 tvg-id="Crunchyroll.us@SD" tvg-logo="https://i.imgur.com/2FlIQUO.png" group-title="🇬🇧 English | Animation",Crunchyroll (720p)
 https://jmp2.uk/plu-65652f7fc0fc88000883537a.m3u8
 
-#EXTINF:-1 tvg-id="CSI.us@SD" tvg-logo="https://i.imgur.com/xLLNEfA.png" group-title="🇬🇧 English | Entertainment",CSI (United States)
+#EXTINF:-1 tvg-id="CSI.us@SD" tvg-logo="https://i.imgur.com/xLLNEfA.png" group-title="🇬🇧 English | Entertainment",CSI
 https://jmp2.uk/plu-5efbd29e4aa26700076c0d06.m3u8
 
 #EXTINF:-1 tvg-id="CTBPerth.au@SD" tvg-logo="https://i.imgur.com/VB8gtCy.jpeg" group-title="🇬🇧 English | Entertainment",CTB Perth (720p)
@@ -3160,6 +3160,9 @@ http://41.205.93.154/ESPNNEWS/index.m3u8
 
 #EXTINF:-1 tvg-id="DisneyChannel.bg@SD" tvg-logo="https://i.imgur.com/UxrAiAe.png" group-title="🇬🇧 English | Kids",Disney Channel (Bulgaria) (576i)
 http://87.120.179.187:8000/play/a010
+
+#EXTINF:-1 tvg-id="DisneyChannel.fr@SD" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/3/3d/2022_Disney_Channel_logo.svg" group-title="🇬🇧 English | Kids",Disney Channel (France)
+https://vuvuu-geil-m3u8.yaskar661.workers.dev/?url=https%3A%2F%2Fvavoo.to%2Fvavoo-iptv%2Fplay%2F11741266772bc970bcdea5
 
 #EXTINF:-1 tvg-id="DisneyChannel.in@SD" tvg-logo="https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_DISNEY_CHANNEL/images/LOGO_HD/image.png" group-title="🇬🇧 English | Kids",Disney Channel (India) (576p)
 http://116.90.120.149:8000/play/a124/index.m3u8
@@ -3455,7 +3458,7 @@ https://jmp2.uk/rok-b484db42f3d31b6dc2f604d453c694a0.m3u8
 #EXTINF:-1 tvg-id="Fame95FM.jm@SD" tvg-logo="https://i.imgur.com/n3PUxes.png" group-title="🇬🇧 English | Music",Fame95 FM (614p)
 https://rjrfame-ioriver-cdn.encoders.immergo.tv/master.m3u8
 
-#EXTINF:-1 tvg-id="FamilyTies.us@SD" tvg-logo="https://i.imgur.com/WJEkKCb.png" group-title="🇬🇧 English | Family",Family Ties (United States)
+#EXTINF:-1 tvg-id="FamilyTies.us@SD" tvg-logo="https://i.imgur.com/WJEkKCb.png" group-title="🇬🇧 English | Family",Family Ties
 https://jmp2.uk/plu-5f77939a630f530007dde654.m3u8
 
 #EXTINF:-1 tvg-id="FarajaTelevision.ug@SD" tvg-logo="https://i.imgur.com/NmnOGHI.jpg" group-title="🇬🇧 English | Entertainment",Faraja Television (1080p) [Not 24/7]
@@ -3526,9 +3529,6 @@ https://nosignal1.antenaplay.ro/hls/fightbox-hd/index.m3u8
 
 #EXTINF:-1 tvg-id="FilAmTVNetwork.us@HD" tvg-logo="https://i.imgur.com/nRiApdI.png" group-title="🇬🇧 English | Music",FilAmTV Network (1080p)
 https://cdn.vegasplus.us/vegas/ftv/playlist.m3u8
-
-#EXTINF:-1 tvg-id="Film1Action.nl@SD" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/c/cd/Film1_Action_SVG.svg/960px-Film1_Action_SVG.svg.png" http-user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36" group-title="🇬🇧 English | Movies",Film1 Action
-http://86.87.15.10:8008/play/a01l/index.m3u8
 
 #EXTINF:-1 tvg-id="Filmazia.pk@SD" tvg-logo="https://i.imgur.com/hpTCANa.png" group-title="🇬🇧 English | Movies",Filmazia (576p)
 http://103.250.28.74:8000/play/a02k/index.m3u8
@@ -4193,7 +4193,7 @@ https://tvsw7-hls.secdn.net/tvsw7-chorigin/play/prod-bb11dd0e11ca45229a3f58aeff5
 #EXTINF:-1 tvg-id="JamaicaTravelChannel.jm@SD" tvg-logo="https://i.imgur.com/ewdPTh8.png" group-title="🇬🇧 English | Entertainment",Jamaica Travel Channel (720p)
 https://stream-207076.castr.net/651b2d8bde8119abf5dabf19/live_2e935360c78c11eea7a2615e1a7388f3/index.m3u8
 
-#EXTINF:-1 tvg-id="JerseyShore.us@SD" tvg-logo="https://i.imgur.com/SssCaj1.png" group-title="🇬🇧 English | Entertainment",Jersey Shore (United States)
+#EXTINF:-1 tvg-id="JerseyShore.us@SD" tvg-logo="https://i.imgur.com/SssCaj1.png" group-title="🇬🇧 English | Entertainment",Jersey Shore
 https://jmp2.uk/plu-609bfa51fbecc1000733152e.m3u8
 
 #EXTINF:-1 tvg-id="JewelryTV2.us@SD" tvg-logo="" group-title="🇬🇧 English | Entertainment",Jewelry TV 2 (720p)
@@ -6194,7 +6194,7 @@ https://livestream.telvue.com/santamariactv2/f7b44cfafd5c52223d5498196c8a2e7b.sd
 #EXTINF:-1 tvg-id="SMCTVChannel25.us@SD" tvg-logo="https://i.imgur.com/5jBOsTc.png" group-title="🇬🇧 English | Entertainment",SMCTV Channel 25 (720p)
 https://livestream.telvue.com/santamariactv3/f7b44cfafd5c52223d5498196c8a2e7b.sdp/playlist.m3u8
 
-#EXTINF:-1 tvg-id="SmithsonianChannelSelects.us@SD" tvg-logo="https://i.imgur.com/Kt5j8Vr.png" group-title="🇬🇧 English | Entertainment",Smithsonian Channel Selects (United States)
+#EXTINF:-1 tvg-id="SmithsonianChannelSelects.us@SD" tvg-logo="https://i.imgur.com/Kt5j8Vr.png" group-title="🇬🇧 English | Entertainment",Smithsonian Channel Selects
 https://jmp2.uk/plu-5f21ea08007a49000762d349.m3u8
 
 #EXTINF:-1 tvg-id="SmurfTV.us@SD" tvg-logo="https://img.static-ottera.com/prod/tg/linear_channel/thumbnails/widescreen/EJIyYyBMkbW5UntSCAkGp-uLla7Z8KWHvDjyEqoOf3k.jpg" group-title="🇬🇧 English | Kids",Smurf TV (480p)
@@ -6217,6 +6217,18 @@ https://a-cdn.klowdtv.com/live1/smc_720p/playlist.m3u8
 
 #EXTINF:-1 tvg-id="SonyPix.in@HD" tvg-logo="https://i.postimg.cc/Z5G8j67L/PIX-HD-WHITE.png" group-title="🇬🇧 English | Movies",Sony Pix HD (1080p)
 http://116.90.120.149:8000/play/a138/index.m3u8
+
+#EXTINF:-1 tvg-id="SonySportsTen1.in@SD" tvg-logo="https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_SONY_SPORTS_TEN_1/images/LOGO_HD/image.png" group-title="🇬🇧 English | Sports",Sony Sports Ten 1 (576p)
+http://116.90.120.149:8000/play/a126/index.m3u8
+
+#EXTINF:-1 tvg-id="SonySportsTen1.in@HD" tvg-logo="https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_SONY_SPORTS_TEN_1/images/LOGO_HD/image.png" group-title="🇬🇧 English | Sports",Sony Sports Ten 1 HD (1080p)
+http://116.90.120.149:8000/play/a11t/index.m3u8
+
+#EXTINF:-1 tvg-id="SonySportsTen2.in@HD" tvg-logo="https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_SONY_SPORTS_TEN_2/images/LOGO_HD/image.png" group-title="🇬🇧 English | Sports",Sony Sports Ten 2 HD (1080p)
+http://116.90.120.149:8000/play/a137/index.m3u8
+
+#EXTINF:-1 tvg-id="SonySportsTen5.in@SD" tvg-logo="https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_SONY_SPORTS_TEN_5/images/LOGO_HD/image.png" group-title="🇬🇧 English | Sports",Sony Sports Ten 5 (576p)
+http://116.90.120.149:8000/play/a117/index.m3u8
 
 #EXTINF:-1 tvg-id="SorozatPlus.hu@SD" tvg-logo="https://i.imgur.com/KsxWZIw.png" http-user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36" group-title="🇬🇧 English | Entertainment",Sorozat+
 http://88.212.7.14/live/test_sorozat_hungary_1200_atk/playlist.m3u8
@@ -6283,6 +6295,18 @@ http://103.250.28.74:8000/play/a010/index.m3u8
 
 #EXTINF:-1 tvg-id="StarChannel.bg@SD" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/8/89/Star_Channel_2020.svg/960px-Star_Channel_2020.svg.png" http-user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.3" group-title="🇬🇧 English | Movies",Star Channel (Bulgaria)
 http://213.91.179.28:8000/play/a0c9
+
+#EXTINF:-1 tvg-id="StarMovies.in@HD" tvg-logo="https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_STAR_MOVIES/images/LOGO_HD/image.png" group-title="🇬🇧 English | Movies",Star Movies (India) HD (1080p)
+http://116.90.120.149:8000/play/a13a/index.m3u8
+
+#EXTINF:-1 tvg-id="StarMoviesSelect.in@HD" tvg-logo="https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_STAR_MOVIES_SELECT_HD/images/LOGO_HD/image.png" group-title="🇬🇧 English | Movies",Star Movies Select HD (1080p)
+http://116.90.120.149:8000/play/a139/index.m3u8
+
+#EXTINF:-1 tvg-id="StarSports1.in@HD" tvg-logo="https://i.imgur.com/E5jjKHI.png" group-title="🇬🇧 English | Sports",Star Sports 1 HD (1080p)
+http://116.90.120.149:8000/play/a11x/index.m3u8
+
+#EXTINF:-1 tvg-id="StarSports2.in@HD" tvg-logo="https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_STAR_SPORTS_2/images/LOGO_HD/image.png" group-title="🇬🇧 English | Sports",Star Sports 2 HD (1080p)
+http://116.90.120.149:8000/play/a120/index.m3u8
 
 #EXTINF:-1 tvg-id="StarVijay.in@UK" tvg-logo="https://i.imgur.com/dZtJHAe.png" group-title="🇬🇧 English | Entertainment",Star Vijay UK (396p)
 https://da86m1sqpm3o0.cloudfront.net/28072023/smil:starvijayuk.smil/playlist.m3u8
@@ -6503,6 +6527,9 @@ https://164475.gvideo.io/mpegts/164475_650646/master_mpegts.m3u8
 #EXTINF:-1 tvg-id="TBNPacific.us@SD" tvg-logo="https://i.imgur.com/yWJTxKk.png" group-title="🇬🇧 English | Entertainment",TBN Pacific
 https://broadcast.tbnpacific.org.au:4430/stream/TBNPacificTV/playlist.m3u8
 
+#EXTINF:-1 tvg-id="TBNPolska.pl@SD" tvg-logo="https://ocdn.eu/ptv2-images-transforms/1/4fPkrxsb2dvLW1pZ3JhdGVkL3Ribi1wb2xza2EucG5nkpUCZADCw5UCACjCww" group-title="🇬🇧 English | Entertainment",TBN Polska (1080p)
+https://prx-y5cf8.mediatool.tv/playout/tbn-abr67/index.m3u8
+
 #EXTINF:-1 tvg-id="TBNUK.uk@SD" tvg-logo="https://i.imgur.com/vFllwLd.png" group-title="🇬🇧 English | Entertainment",TBN UK (1080p)
 https://live-tbn-ssai.simplestreamcdn.com/v1/master/774d979dd66704abea7c5b62cb34c6815fda0d35/tbn-live/manifest.m3u8
 
@@ -6530,7 +6557,7 @@ https://cdn-telkomsel-01.akamaized.net/Content/HLS/Live/channel(abe4ead2-1a88-43
 #EXTINF:-1 tvg-id="TED.us@SD" tvg-logo="https://i.imgur.com/KeIhwNP.png" group-title="🇬🇧 English | Entertainment",TED (1080p)
 https://d1b16tvvxk3tnu.cloudfront.net/TED.m3u8
 
-#EXTINF:-1 tvg-id="TeenMom.us@SD" tvg-logo="https://i.imgur.com/8o3ClCV.png" group-title="🇬🇧 English | Entertainment",Teen Mom (United States)
+#EXTINF:-1 tvg-id="TeenMom.us@SD" tvg-logo="https://i.imgur.com/8o3ClCV.png" group-title="🇬🇧 English | Entertainment",Teen Mom
 https://jmp2.uk/plu-6127e12ed140e900077e7b6f.m3u8
 
 #EXTINF:-1 tvg-id="TeenNick.pl@SD" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/TeenNick_logo_2023_%28outline%29.svg/1280px-TeenNick_logo_2023_%28outline%29.svg.png" group-title="🇬🇧 English | Kids",TeenNick (Poland) (576i)
@@ -6791,6 +6818,9 @@ https://hls-1zdhtxpm-livepush.akamaized.net/live_cdn/nsM12Xw0C1xXdJ/em0Wx71z-ec6
 #EXTINF:-1 tvg-id="TLC.hu@SD" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/TLC_Logo.svg/960px-TLC_Logo.svg.png" group-title="🇬🇧 English | Entertainment",TLC (Hungary)
 http://88.212.7.14/live/tlc_hungary/index.m3u8
 
+#EXTINF:-1 tvg-id="TLC.in@HD" tvg-logo="https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_TLC/images/LOGO_HD/image.png" group-title="🇬🇧 English | Entertainment",TLC (India) HD (1080p)
+http://116.90.120.149:8000/play/a11g/index.m3u8
+
 #EXTINF:-1 tvg-id="TLCSoutheastAsia.sg@SD" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/TLC_Logo.svg/960px-TLC_Logo.svg.png" http-user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36" group-title="🇬🇧 English | Entertainment",TLC Southeast Asia
 http://103.253.74.210:7070/stream/108/index.m3u8
 
@@ -6866,7 +6896,7 @@ https://content.uplynk.com/channel/33c48f602cfd4474b957eb4ad999caf8.m3u8
 #EXTINF:-1 tvg-id="Toronto360TV.ca@SD" tvg-logo="https://i.imgur.com/YJYdHKO.png" group-title="🇬🇧 English | Entertainment",Toronto 360 TV (720p) [Not 24/7]
 http://cdn3.toronto360.tv:8081/toronto360/hd/playlist.m3u8
 
-#EXTINF:-1 tvg-id="Tosh0.us@SD" tvg-logo="https://i.imgur.com/sXkluxg.png" group-title="🇬🇧 English | Entertainment",Tosh.0 (United States)
+#EXTINF:-1 tvg-id="Tosh0.us@SD" tvg-logo="https://i.imgur.com/sXkluxg.png" group-title="🇬🇧 English | Entertainment",Tosh.0
 https://jmp2.uk/plu-5dae084727c8af0009fe40a4.m3u8
 
 #EXTINF:-1 tvg-id="TraceAfrica.fr@SD" tvg-logo="https://i.imgur.com/kPUkoS7.png" http-referrer="https://trace.plus" http-user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/156.0.0.0 Safari/537.36" group-title="🇬🇧 English | Music",Trace Africa (1080p)
@@ -7225,6 +7255,9 @@ https://streaming-live-fcdn.api.prd.univisionnow.com/wfut/wfut.isml/hls/wfut.m3u
 
 #EXTINF:-1 tvg-id="UniMas.us@WXTVDT" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/3/34/Logo_UniM%C3%A1s_2021.svg/960px-Logo_UniM%C3%A1s_2021.svg.png" group-title="🇬🇧 English | Entertainment",UniMas WXTV-DT (1080p)
 https://streaming-live-fcdn.api.prd.univisionnow.com/wxtv/wxtv.isml/hls/wxtv.m3u8
+
+#EXTINF:-1 tvg-id="Unite8Sports2.in@HD" tvg-logo="https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_SYMANDFLIX_HD/images/LOGO_HD/LOGO_HD_qVrE3q5rN_UNITE8-SPORTS-2_HD_264X144.webp" group-title="🇬🇧 English | Sports",Unite8 Sports 2 HD (1080p)
+http://116.90.120.149:8000/play/a129/index.m3u8
 
 #EXTINF:-1 tvg-id="UniversalCinema.us@SD" tvg-logo="https://i.imgur.com/XxfET68.png" group-title="🇬🇧 English | Movies",Universal Cinema (1080p)
 http://45.167.1.138:8000/play/a06m
