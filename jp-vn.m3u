@@ -1301,6 +1301,9 @@ https://goliveafrica.media:9998/live/64d21e682fd26/index.m3u8
 #EXTINF:-1 tvg-id="3TV.us@KTVK" tvg-logo="https://i.imgur.com/kQ1x2yK.png" group-title="🇬🇧 English | Entertainment",3TV (1080p) [Geo-blocked]
 https://amg00312-amg00312c59-amgplt0022.playout.now3.amagi.tv/ts-us-e2-n2/playlist/amg00312-amg00312c59-amgplt0022/playlist.m3u8
 
+#EXTINF:-1 tvg-id="316Channel.sa@SD" tvg-logo="https://raw.githubusercontent.com/songwenhui239/Songwenhui239/refs/heads/main/3.16%20Channel.jpeg" group-title="🇬🇧 English | Entertainment",3.16 Channel (1080p)
+https://316hls.wns.live/hls/stream.m3u8
+
 #EXTINF:-1 tvg-id="5Cops.us@UK" tvg-logo="https://i.imgur.com/QFPRaXK.png" group-title="🇬🇧 English | Entertainment",5 Cops
 https://jmp2.uk/plu-5d2c571faeb3e2738ae27933.m3u8
 
@@ -1474,9 +1477,6 @@ https://townnews.g-mana.live/media/027a05c7-43b6-49eb-ad10-a0c0f10a0754/main.m3u
 
 #EXTINF:-1 tvg-id="ABC.us@WWSB" tvg-logo="https://i.imgur.com/pvXZ8DX.png" group-title="🇬🇧 English | Entertainment",ABC WWSB (1080p) [Geo-blocked]
 https://amg00312-amg00312c30-amgplt0022.playout.now3.amagi.tv/ts-us-e2-n2/playlist/amg00312-amg00312c30-amgplt0022/playlist.m3u8
-
-#EXTINF:-1 tvg-id="ABCAustralia.au@SD" tvg-logo="https://i.imgur.com/qQ33TVM.png" http-referrer="https://www.visionplus.id/" http-user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64)" group-title="🇬🇧 English | Entertainment",ABC Australia (480p)
-https://proxy-v.rctiplus.id/live/web/abcaus/index.m3u8
 
 #EXTINF:-1 tvg-id="ABCEntertains.au@Sydney" tvg-logo="https://upload.wikimedia.org/wikipedia/en/thumb/3/35/ABC_Entertains_logo.svg/960px-ABC_Entertains_logo.svg.png" group-title="🇬🇧 English | Kids",ABC Entertains (720p)
 https://c.mjh.nz/abc-me.m3u8
@@ -1928,9 +1928,6 @@ https://amg00145-fremantlemedian-baywatch-samsungau-gtsd6.amagi.tv/playlist/amg0
 #EXTINF:-1 tvg-id="BBCDrama.uk@US" tvg-logo="https://i.imgur.com/HctHhLL.png" group-title="🇬🇧 English | Entertainment",BBC Drama US (1080p)
 https://linear-938.frequency.stream/mt/vizio/938/hls/master/playlist.m3u8
 
-#EXTINF:-1 tvg-id="BBCEarth.uk@Asia" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/7/7e/BBC_Earth_2023.svg" http-referrer="https://www.visionplus.id/" http-user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64)" group-title="🇬🇧 English | Entertainment",BBC Earth Asia (720p)
-https://proxy-v.rctiplus.id/live/web/bbcearth/index.m3u8
-
 #EXTINF:-1 tvg-id="BBCEarth.uk@Turkiye" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/7/7e/BBC_Earth_2023.svg" http-user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36" group-title="🇬🇧 English | Entertainment",BBC Earth Turkiye
 https://nord.ayakkabiparti.lol/bbc/index.m3u8
 
@@ -1957,9 +1954,6 @@ https://dmr1h4skdal9h.cloudfront.net/playlist.m3u8
 
 #EXTINF:-1 tvg-id="BBCNews.uk@Africa" tvg-logo="https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_BBC_NEWS/images/LOGO_HD/image.png" group-title="🇬🇧 English | News",BBC News Africa (1080p)
 https://vs-cmaf-push-ww-live.akamaized.net/x=4/i=urn:bbc:pips:service:bbc_news_channel_hd/hevc_iptv_mse_v0.mpd
-
-#EXTINF:-1 tvg-id="BBCNews.uk@AsiaPacific" tvg-logo="https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_BBC_NEWS/images/LOGO_HD/image.png" http-referrer="https://www.visionplus.id/" http-user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36" group-title="🇬🇧 English | News",BBC News Asia Pacific (480p)
-https://proxy-v.rctiplus.id/live/web/bbcworld/index.m3u8
 
 #EXTINF:-1 tvg-id="BBCNews.uk@Europe" tvg-logo="https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_BBC_NEWS/images/LOGO_HD/image.png" group-title="🇬🇧 English | News",BBC News Europe (576p)
 http://46.32.176.50/bbcworld/index.m3u8
@@ -2589,7 +2583,7 @@ https://h5cul1yar48um3t.wcetv.com/hls/cctv4.m3u8
 http://74.91.26.218:82/live/cctv4hd.m3u8
 
 #EXTINF:-1 tvg-id="CCTV4Europe.cn@SD" tvg-logo="https://i.imgur.com/HGLFdfk.png" group-title="🇬🇧 English | Entertainment",CCTV-4 Europe
-https://dash2.antik.sk/live/test_cctv_tizen/playlist.m3u8
+https://r.eu.cdn-redge.media/livehls/oeu/mt/live/cctv_4/live.livx/playlist.m3u8
 
 #EXTINF:-1 tvg-id="CCX1.us@SD" tvg-logo="https://i.imgur.com/1hHW3IK.png" group-title="🇬🇧 English | Entertainment",CCX1 (1080p)
 http://reflect-ccx.cablecast.tv/live-9/live/stream-1/live.m3u8
@@ -3806,9 +3800,6 @@ https://jmp2.uk/plu-66ba1e4446762a000855cd87.m3u8
 #EXTINF:-1 tvg-id="GlobalFashionChannel.us@SD" tvg-logo="https://i.imgur.com/s4eGYEP.jpg" group-title="🇬🇧 English | Entertainment",Global Fashion Channel (1080p)
 https://pubgfc.teleosmedia.com/linear/globalfashionchannel/globalfashionchannel/playlist.m3u8
 
-#EXTINF:-1 tvg-id="GlobalTrekker.sg@SD" tvg-logo="https://i.imgur.com/5nlmJIw.png" http-referrer="https://www.visionplus.id/" http-user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64)" group-title="🇬🇧 English | Entertainment",Global Trekker (720p)
-https://proxy-v.rctiplus.id/live/web/globetrekker/index.m3u8
-
 #EXTINF:-1 tvg-id="GlobalWorldTV.us@SD" tvg-logo="https://i.imgur.com/2u33Ayy.jpeg" group-title="🇬🇧 English | Entertainment",GlobalWorldTV (720p)
 https://media.streambrothers.com:1936/8052/8052/playlist.m3u8
 
@@ -4736,7 +4727,7 @@ https://reflect-mcsb-vod.cablecast.tv/live-16/live/live.m3u8
 #EXTINF:-1 tvg-id="MTV.de@SD" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/6/68/MTV_2021_%28brand_version%29.svg/960px-MTV_2021_%28brand_version%29.svg.png" group-title="🇬🇧 English | Music",MTV (Germany)
 https://ma.anixa.tv/clips/stream/mtv/playlist.php
 
-#EXTINF:-1 tvg-id="MTV.in@International" tvg-logo="https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_MTV/images/LOGO_HD/image.png" http-referrer="https://bhoomtv.org/" http-user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36" group-title="🇬🇧 English | Music",MTV (India) International (576p)
+#EXTINF:-1 tvg-id="MTV.in@International" tvg-logo="https://dtil.tmsimg.com/assets/s143558_ld_h15_aa.png?lock=720x540" http-referrer="https://bhoomtv.org/" http-user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36" group-title="🇬🇧 English | Music",MTV (India) International (576p)
 https://yupp-music.keralive.workers.dev/out/v1/a797c00cba954265ba781f92a57e2cf5/index.m3u8
 
 #EXTINF:-1 tvg-id="MTV.jp@SD" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/6/68/MTV_2021_%28brand_version%29.svg/960px-MTV_2021_%28brand_version%29.svg.png" group-title="🇬🇧 English | Music",MTV (Japan)
@@ -5102,8 +5093,8 @@ https://cdn.pishow.tv/ott/live/455/master.m3u8
 #EXTINF:-1 tvg-id="NHKWorldJapan.jp@HD" tvg-logo="https://jiotvimages.cdn.jio.com/dare_images/images/NHK_World_Japan.png" group-title="🇬🇧 English | News",NHK World-Japan HD (1080p)
 https://freem3u.xyz/api/live/play.m3u8?vid=106
 
-#EXTINF:-1 tvg-id="NHLAntenaPlay.ro@SD" tvg-logo="https://assets.antenaplay.ro/2024/10/25/SN0nevshXwKDcZ2Tw1jm.png" group-title="🇬🇧 English | Sports",NHL AntenaPlay (576i) [Not 24/7]
-https://stream1.antenaplay.ro/promo/nhl-12-1411/chunklist.m3u8
+#EXTINF:-1 tvg-id="NHLAntenaPlay.ro@SD" tvg-logo="https://assets.antenaplay.ro/2024/10/25/SN0nevshXwKDcZ2Tw1jm.png" group-title="🇬🇧 English | Sports",NHL AntenaPlay (576p) [Not 24/7]
+https://stream1.antenaplay.ro/promo/nhl-2911/chunklist.m3u8
 
 #EXTINF:-1 tvg-id="NHLNetwork.us@SD" tvg-logo="https://i.imgur.com/UNZ8bef.png" group-title="🇬🇧 English | Sports",NHL Network (1080p)
 https://nhl-firetv.amagi.tv/playlist.m3u8
@@ -5159,8 +5150,8 @@ http://103.253.74.210:7070/stream/117/index.m3u8
 #EXTINF:-1 tvg-id="Nicktoons.pl@SD" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/b/be/Nicktoons_Logo_2023.svg" group-title="🇬🇧 English | Kids",Nicktoons (Poland) (576i)
 http://92.114.85.87:8013/play/a008/index.m3u8
 
-#EXTINF:-1 tvg-id="Nicktoons.ro@SD" tvg-logo="https://static.wikia.nocookie.net/logopedia/images/7/71/NickToons_US_2023_Splat_Variant.png/revision/latest?cb=20251214221939" group-title="🇬🇧 English | Kids",Nicktoons (Romania)
-http://178.76.68.60:7442/80/mpegts
+#EXTINF:-1 tvg-id="Nicktoons.ro@SD" tvg-logo="https://static.wikia.nocookie.net/logopedia/images/7/71/NickToons_US_2023_Splat_Variant.png/revision/latest?cb=20251214221939" group-title="🇬🇧 English | Kids",Nicktoons (Romania) (576p)
+http://91.235.165.117:8001/play/a061/index.m3u8
 
 #EXTINF:-1 tvg-id="Nigbati.ng@SD" tvg-logo="" group-title="🇬🇧 English | Entertainment",Nigbati (720p) [Not 24/7]
 https://viewmedia7219.bozztv.com/wmedia/viewmedia100/web_023/Stream/playlist.m3u8
@@ -5807,12 +5798,6 @@ https://linear-693.frequency.stream/dist/stirr/693/hls/master/playlist.m3u8
 #EXTINF:-1 tvg-id="Roar.us@WTVF" tvg-logo="https://iili.io/FxYNwOB.md.png" group-title="🇬🇧 English | Entertainment",Roar WTVF (1080p)
 https://amg01438-amg01438c25-vizio-us-10911.playouts.now.amagi.tv/playlist.m3u8
 
-#EXTINF:-1 tvg-id="ROCKAction.sg@SD" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/4/41/Rock_Action.png" http-referrer="https://www.visionplus.id/" http-user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64)" group-title="🇬🇧 English | Entertainment",ROCK Action (720p)
-https://proxy-v.rctiplus.id/live/web/rockaction/index.m3u8
-
-#EXTINF:-1 tvg-id="ROCKEntertainment.sg@SD" tvg-logo="https://i.imgur.com/PWzq0aU.png" http-referrer="https://www.visionplus.id/" http-user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64)" group-title="🇬🇧 English | Entertainment",ROCK Entertainment (720p)
-https://proxy-v.rctiplus.id/live/web/rockent/index.m3u8
-
 #EXTINF:-1 tvg-id="RomanticFM.ro@SD" tvg-logo="https://assets.antenaplay.ro/2023/08/16/u0AuO3YCe1bdz3xSHgeK.png" group-title="🇬🇧 English | Music",Romantic FM (576i)
 https://stream1.antenaplay.ro/zurtv/rfmprem/chunklist.m3u8
 
@@ -6395,8 +6380,8 @@ https://af7a8b4e.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/TEctZ2
 #EXTINF:-1 tvg-id="TalkTV.uk@SD" tvg-logo="https://i.imgur.com/KxHWpQB.png" group-title="🇬🇧 English | Entertainment",TalkTV (1080p)
 https://488f4ce4.wurl.com/master/f36d25e7e52f1ba8d7e56eb859c636563214f541/TEctZ2JfVGFsa19ITFM/playlist.m3u8
 
-#EXTINF:-1 tvg-id="TanzaniaSafariChannel.tz@SD" tvg-logo="https://i.imgur.com/fcLFYhn.png" group-title="🇬🇧 English | Entertainment",Tanzania Safari Channel (576p)
-https://stream-134630.castr.net/5fe35eae8c53540cab83659a/live_31dabe40323511f08b8efff0016f3b67/index.m3u8
+#EXTINF:-1 tvg-id="TanzaniaSafariChannel.tz@SD" tvg-logo="https://i.imgur.com/fcLFYhn.png" group-title="🇬🇧 English | Entertainment",Tanzania Safari Channel (1080p)
+https://stream-134630.castr.net/5fe35eae8c53540cab83659a/live_12bb7dc0590211f1951119e8afeb4224/index.m3u8
 
 #EXTINF:-1 tvg-id="TAPSports.ph@SD" tvg-logo="https://i.imgur.com/4GmuJMD.png" group-title="🇬🇧 English | Sports",TAP Sports (1080p) [Geo-blocked]
 https://amg19223-amg19223c2-amgplt0351.playout.now3.amagi.tv/playlist/amg19223-amg19223c2-amgplt0351/playlist.m3u8
@@ -7244,10 +7229,13 @@ http://88.212.7.14/live/viasat3/index.m3u8
 #EXTINF:-1 tvg-id="Viasat6.hu@SD" tvg-logo="https://i.imgur.com/kypSbFX.png" http-user-agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36" group-title="🇬🇧 English | Entertainment",Viasat 6
 http://88.212.7.14/live/viasat6/index.m3u8
 
-#EXTINF:-1 tvg-id="ViasatKino.ua@SD" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/2/2b/Viasat_Kino_Logo_2025.svg" group-title="🇬🇧 English | Movies",Viasat Kino (576p)
+#EXTINF:-1 tvg-id="ViasatKino.ro@SD" tvg-logo="https://static.wikia.nocookie.net/logopedia/images/0/0f/Viasat_Kino_2025.svg/revision/latest?cb=20250506205346" group-title="🇬🇧 English | Movies",Viasat Kino (Romania) (576i)
+http://91.235.165.117:8001/play/a055/index.m3u8
+
+#EXTINF:-1 tvg-id="ViasatKino.ua@SD" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/2/2b/Viasat_Kino_Logo_2025.svg" group-title="🇬🇧 English | Movies",Viasat Kino (Ukraine) (576p)
 http://dtv.vol.net.ua/Viasat_Kino/index.m3u8
 
-#EXTINF:-1 tvg-id="ViasatKino.ua@Balkan" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/2/2b/Viasat_Kino_Logo_2025.svg" group-title="🇬🇧 English | Movies",Viasat Kino Balkan (1080p)
+#EXTINF:-1 tvg-id="ViasatKino.ua@Balkan" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/2/2b/Viasat_Kino_Logo_2025.svg" group-title="🇬🇧 English | Movies",Viasat Kino (Ukraine) Balkan (1080p)
 http://176.61.157.250/TV1000/index.m3u8
 
 #EXTINF:-1 tvg-id="ViasatKinoAction.ua@SD" tvg-logo="https://i.imgur.com/HwsNIDK.png" group-title="🇬🇧 English | Movies",Viasat Kino Action (576p)
